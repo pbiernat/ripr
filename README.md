@@ -15,6 +15,7 @@ ripr attempts to automatically generate a python class that is functionally iden
 For some concrete examples (that are much easier to grok), check out the `sample` folder!
 
 
+
 ### Installation
 ---
 The basic process is simple and looks like this:
@@ -103,13 +104,13 @@ def hook_puts(self):
 You have full access to all of Unicorn's methods via the `mu` attribute so it is possible to update the emulator context in any way necessary in order to mimic the behavior of a call or perform any actions you'd like instead of the call.
 
 ### Function Arguments
-Currently, function arguements have to manually be inserted by editing the output of ripr.
+Currently, function arguments have to manually be inserted by editing the output of ripr.
 
-For example, in 32 bit x86, function arguements are passed via the stack. The first argument is above the return address and following arguments are above it. So to provide two arguments you could do:
+For example, in 32 bit x86, function arguments are passed via the stack. The first argument is above the return address and following arguments are above it. So to provide two arguments you could do:
 
 ```python
 def run(self, arg1,arg2):
-    self.mu.req_write(UC_X86_REG_ESP, 0x7fffffff)
+    self.mu.reg_write(UC_X86_REG_ESP, 0x7fffffff)
     self.mu.mem_write(0x7fffffff, '\x01\x00\x00\x00')
 
     self.mu.mem_write(0x80000003, arg1)
@@ -120,7 +121,7 @@ def run(self, arg1,arg2):
     return self.mu.reg_read(UC_X86_REG_EAX)
 ```
 
-Of course you will have to make sure Endianness is correct. Recommend looking into the struct package.
+Of course you will have to make sure endianness is correct. Recommend looking into the struct package.
 
 
 ### Code Structure
