@@ -123,6 +123,23 @@ def run(self, arg1,arg2):
 
 Of course you will have to make sure endianness is correct. Recommend looking into the struct package.
 
+If the arguement is a pointer, such as a char \*, you will have to map memory to store the buffer, write the data in the mapped memory and then provide the address as the argument. For example:
+
+```python
+def __init__(self):
+    self.mu.mem_map(0xbffff000,0x200000)
+    #rest of ripr output
+
+def run(self,arg1):
+    self.mu.reg_write(UC_X86_REG_ESP, 0x7fffffff)
+    self.mu.mem_write(0x7fffffff, '\x01\x00\x00\x00')
+    
+    self.mu.mem_write(0xbffff068,arg1) #write arg1 in mem
+    self.mu.mem_write(0x80000003,'\x68\xf0\xff\xbf') # point to arg1 in mem as arg1
+
+    self._start_unicorn(0x80484bb)
+    return self.mu.reg_read(UC_X86_REG_EAX)
+```
 
 ### Code Structure
 ---
