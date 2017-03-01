@@ -41,7 +41,7 @@ class depScanner(object):
         self.dataRefs = []
         self.codeRefs = []
         
-        self.imports = {self.engine.bv.symbols[sym].address : self.engine.bv.symbols[sym] for sym in self.engine.bv.symbols if self.engine.bv.symbols[sym].type == 'ImportedFunctionSymbol'}
+        self.imports = {self.engine.bv.symbols[sym].address : self.engine.bv.symbols[sym] for sym in self.engine.bv.symbols if self.engine.bv.symbols[sym].type == SymbolType.ImportedFunctionSymbol}
 
     def _mark_imported_call(self, fobj, address, target):
         '''
@@ -49,24 +49,24 @@ class depScanner(object):
             Note: We /do/ want duplicates (multiple ImportedCall objects for "puts" for example)
             as we map expected return addresses to our hooked functions.
         '''
-        fobj.set_user_instr_highlight(self.engine.bv.arch, address, core.RedHighlightColor)
+        fobj.set_user_instr_highlight(address, HighlightStandardColor.RedHighlightColor)
         fobj.set_comment(address, "[ripr] Imported Call !!")
 
         symname = str(target)
         if target in self.imports.keys():
             symname = self.imports[target]
         
-        icall = ImportedCall(address, self.engine.bv.get_instruction_length(self.engine.bv.arch, address), target, symname)
+        icall = ImportedCall(address, self.engine.bv.get_instruction_length(address), target, symname)
         self.impCalls.append(icall) 
 
     def _mark_additional_branch(self, fobj, address, destination, _type): 
         ref = riprCodeRef(destination, _type)
-        fobj.set_user_instr_highlight(self.engine.bv.arch, address, core.BlueHighlightColor)
+        fobj.set_user_instr_highlight(address, HighlightStandardColor.BlueHighlightColor)
         
         self.codeRefs.append(ref)
 
     def _mark_identified_data(self, fobj, address):
-        fobj.set_user_instr_highlight(self.engine.bv.arch, address, core.YellowHighlightColor)
+        fobj.set_user_instr_highlight(address, HighlightStandardColor.YellowHighlightColor)
     
     def branchScan(self, address):
         '''
@@ -77,11 +77,11 @@ class depScanner(object):
         ret = []
 
         
-        fobj = self.engine.bv.get_function_at(self.engine.bv.platform, address)
+        fobj = self.engine.bv.get_function_at(address)
         for block in fobj.low_level_il:
             for il_inst in block:
                 print il_inst
-                if (il_inst.operation == core.LLIL_CALL):
+                if (il_inst.operation == LowLevelILOperation.LLIL_CALL):
                     #core.LLIL_JUMP, core.LLIL_JUMP_TO, core.LLIL_GOTO]):
                     if (il_inst.dest.value in self.imports):
                         print "[ripr] Found imported Call target..."
@@ -95,7 +95,7 @@ class depScanner(object):
                         print "[ripr] Target address already mapped"
 
                 # Check Jump targets
-                elif (il_inst.operation in [core.LLIL_JUMP, core.LLIL_JUMP_TO, core.LLIL_GOTO]):
+                elif (il_inst.operation in [LowLevelILOperation.LLIL_JUMP, LowLevelILOperation.LLIL_JUMP_TO, LowLevelILOperation.LLIL_GOTO]):
                     print "[ripr] JUMP TARGET: %s" % (str(il_inst.dest))
                     print dir(il_inst.dest)
                 else:
@@ -110,7 +110,7 @@ class depScanner(object):
         for st in self.engine.bv.strings:
             for ref in self.engine.bv.get_code_refs(st.start, st.length):
                 print ref.address
-                if (fobj.get_basic_block_at(fobj.arch, ref.address) != None):
+                if (fobj.get_basic_block_at(ref.address) != None):
                     print "[ripr] Found string reference: 0x%x" % (ref.address)
                     self._mark_identified_data(fobj, ref.address)
                     dref = riprDataRef(st.start, st.length, 'str')
@@ -126,7 +126,7 @@ class depScanner(object):
 
         for sym in symbols:
             for ref in self.engine.bv.get_code_refs(symbols[sym].address):
-                if (fobj.get_basic_block_at(fobj.arch, ref.address) != None):
+                if (fobj.get_basic_block_at(ref.address) != None):
                     print "[ripr] Found Symbol Reference: 0x%x references 0x%x" % (ref.address, symbols[sym].address)
                     self._mark_identified_data(fobj, ref.address)
                     dref = riprDataRef(symbols[sym].address, -1, 'sym')
@@ -148,7 +148,7 @@ class depScanner(object):
         print "[ripr] Inside dataScan"
         ret = []
         # Get a Function object at this address
-        fobj = self.engine.bv.get_function_at(self.engine.bv.platform, address)
+        fobj = self.engine.bv.get_function_at(address)
         
         # Find the low-hanging fruit
         ret += self._simpleDataScan(fobj)
@@ -156,7 +156,7 @@ class depScanner(object):
         # Iterate over all instructions in each basic block
         for block in fobj.low_level_il:
             for il_inst in block:
-                constants = fobj.get_constants_referenced_by(self.engine.bv.arch, il_inst.address)
+                constants = fobj.get_constants_referenced_by(il_inst.address)
                 # Check if constant is a likely pointer
                 for const in constants:
                     if self.engine.bv.is_valid_offset(const.value):
@@ -166,11 +166,11 @@ class depScanner(object):
                         self.dataRefs.append(dref)
                         ret.append(const.value)
                 # Memory things 
-                if (il_inst.operation in [core.LLIL_LOAD, core.LLIL_STORE, core.LLIL_CONST, core.LLIL_UNIMPL_MEM, core.LLIL_SET_REG]):
+                if (il_inst.operation in [LowLevelILOperation.LLIL_LOAD, LowLevelILOperation.LLIL_STORE, LowLevelILOperation.LLIL_CONST, LowLevelILOperation.LLIL_UNIMPL_MEM, LowLevelILOperation.LLIL_SET_REG]):
                     print "[ripr] Found memory based instruction"
-                    print "%s ::> %s" % (il_inst, il_inst.operation_name)
+                    print "%s ::> %s" % (il_inst, il_inst.operation)
                     print il_inst.operands
-                    if (il_inst.operation == core.LLIL_STORE):
+                    if (il_inst.operation == LowLevelILOperation.LLIL_STORE):
                         try:
                             if self.engine.bv.is_valid_offset(il_inst.operands[0].value):
                                 val = il_inst.operands[0].value

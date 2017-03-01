@@ -123,7 +123,7 @@ class bn_engine(aengine):
         '''
         print "[ripr] Inside get_function_bytes()"
         if (address != None):
-            fobj = self.bv.get_function_at(self.bv.platform, address)
+            fobj = self.bv.get_function_at(address)
         elif (name != None):
             print "[ripr] TODO"
             return
@@ -132,7 +132,7 @@ class bn_engine(aengine):
             return None
         # Sort the basic blocks in ascending order 
         bblist = sorted(fobj.basic_blocks, key=lambda x: x.start)
-        map(lambda bb: bb.set_user_highlight(core.BlackHighlightColor), bblist)
+        map(lambda bb: bb.set_user_highlight(HighlightStandardColor.BlackHighlightColor), bblist)
         # Create units of contiguous blocks
         clist = [[bblist[0]]]
         for bb in bblist[1:]:
