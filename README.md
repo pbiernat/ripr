@@ -15,6 +15,7 @@ ripr attempts to automatically generate a python class that is functionally iden
 For some concrete examples (that are much easier to grok), check out the `sample` folder!
 
 
+
 ### Installation
 ---
 The basic process is simple and looks like this:
@@ -102,6 +103,44 @@ def hook_puts(self):
 
 You have full access to all of Unicorn's methods via the `mu` attribute so it is possible to update the emulator context in any way necessary in order to mimic the behavior of a call or perform any actions you'd like instead of the call.
 
+### Function Arguments
+Currently, function arguments have to manually be inserted by editing the output of ripr.
+
+For example, in 32 bit x86, function arguments are passed via the stack. The first argument is above the return address and following arguments are above it. So to provide two arguments you could do:
+
+```python
+def run(self, arg1,arg2):
+    self.mu.reg_write(UC_X86_REG_ESP, 0x7fffffff)
+    self.mu.mem_write(0x7fffffff, '\x01\x00\x00\x00')
+
+    self.mu.mem_write(0x80000003, arg1)
+    self.mu.mem_write(0x80000007, arg2)
+    
+
+    self._start_unicorn(0x80484bb)
+    return self.mu.reg_read(UC_X86_REG_EAX)
+```
+
+Of course you will have to make sure endianness is correct. Recommend looking into the struct package.
+
+If the arguement is a pointer, such as a char \*, you will have to map memory to store the buffer, write the data in the mapped memory and then provide the address as the argument. For example:
+
+```python
+def __init__(self):
+    self.mu.mem_map(0xbffff000,0x200000)
+    #rest of ripr output
+
+def run(self,arg1):
+    self.mu.reg_write(UC_X86_REG_ESP, 0x7fffffff)
+    self.mu.mem_write(0x7fffffff, '\x01\x00\x00\x00')
+    
+    self.mu.mem_write(0xbffff068,arg1) #write arg1 in mem
+    self.mu.mem_write(0x80000003,'\x68\xf0\xff\xbf') # point to arg1 in mem as arg1
+
+    self._start_unicorn(0x80484bb)
+    return self.mu.reg_read(UC_X86_REG_EAX)
+```
+
 ### Code Structure
 ---
 * `packager.py` -- High Level Functionality. Code here drives the process of gathering necessary data.
@@ -110,3 +149,4 @@ You have full access to all of Unicorn's methods via the `mu` attribute so it is
 * `dependency.py` -- Contains code for finding code and data that the target code needs in order to function corrrectly.
 * `gui.py` --  A collection of hacks that resembles a user interface
     * Reuses lots of code from the [Binjadock](https://github.com/NOPDev/BinjaDock) project to display results
+
