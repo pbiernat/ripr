@@ -5,9 +5,7 @@
 '''
 
 import analysis_engine as ae
-from binaryninja import *
 
-### TODO REWORK THIS INTO AN ABSTRACTED MODEL SIMILAR TO ANALYSIS ENGINE ###
 class ImportedCall(object):
     '''
         Convenience class for storing information about imported Calls.
@@ -41,32 +39,31 @@ class depScanner(object):
         self.dataRefs = []
         self.codeRefs = []
         
-        self.imports = {self.engine.bv.symbols[sym].address : self.engine.bv.symbols[sym] for sym in self.engine.bv.symbols if self.engine.bv.symbols[sym].type == SymbolType.ImportedFunctionSymbol}
+        self.imports = self.engine.get_imports()
 
-    def _mark_imported_call(self, fobj, address, target):
+    def _mark_imported_call(self, func_addr, address, target):
         '''
             Create an ImportedCall object for possible later use in "python-hooking"
             Note: We /do/ want duplicates (multiple ImportedCall objects for "puts" for example)
             as we map expected return addresses to our hooked functions.
         '''
-        fobj.set_user_instr_highlight(address, HighlightStandardColor.RedHighlightColor)
-        fobj.set_comment(address, "[ripr] Imported Call !!")
+        self.engine.highlight_instr(func_addr, address, "red")
+        self.engine.add_comment(func_addr, address, "Imported Call !!")
 
         symname = str(target)
         if target in self.imports.keys():
             symname = self.imports[target]
         
-        icall = ImportedCall(address, self.engine.bv.get_instruction_length(address), target, symname)
+        icall = ImportedCall(address, self.engine.get_instruction_length(address), target, symname)
         self.impCalls.append(icall) 
 
-    def _mark_additional_branch(self, fobj, address, destination, _type): 
+    def _mark_additional_branch(self, func_addr, address, destination, _type):
         ref = riprCodeRef(destination, _type)
-        fobj.set_user_instr_highlight(address, HighlightStandardColor.BlueHighlightColor)
-        
+        self.engine.highlight_instr(func_addr, address, "blue")
         self.codeRefs.append(ref)
 
-    def _mark_identified_data(self, fobj, address):
-        fobj.set_user_instr_highlight(address, HighlightStandardColor.YellowHighlightColor)
+    def _mark_identified_data(self, func_addr, ref_addr):
+        self.engine.highlight_instr(func_addr, ref_addr, "yellow")
     
     def branchScan(self, address):
         '''
@@ -75,69 +72,59 @@ class depScanner(object):
         '''
         print "[ripr] Inside branchScan"
         ret = []
+        def callCallback(dest, instr_addr):
+            if (dest in self.imports):
+                print "[ripr] Found imported Call target..."
+                self._mark_imported_call(address, instr_addr, dest)
 
-        
-        fobj = self.engine.bv.get_function_at(address)
-        for block in fobj.low_level_il:
-            for il_inst in block:
-                print il_inst
-                if (il_inst.operation == LowLevelILOperation.LLIL_CALL):
-                    #core.LLIL_JUMP, core.LLIL_JUMP_TO, core.LLIL_GOTO]):
-                    if (il_inst.dest.value in self.imports):
-                        print "[ripr] Found imported Call target..."
-                        self._mark_imported_call(fobj, il_inst.address, il_inst.dest.value)
-                    
-                    elif  (self.codeobj.data_saved(il_inst.dest.value) == False):
-                        print "[ripr] Found LLIL CALL instruction"
-                        print "[ripr] IL_INST Dest:"
-                        self._mark_additional_branch(fobj, il_inst.address, il_inst.dest.value, "call")
-                    else:
-                        print "[ripr] Target address already mapped"
+            elif  (self.codeobj.data_saved(dest) == False):
+                print "[ripr] Found LLIL CALL instruction"
+                print "[ripr] IL_INST Dest:"
+                self._mark_additional_branch(address, instr_addr, dest, "call")
+            else:
+                print "[ripr] Target address already mapped"
 
-                # Check Jump targets
-                elif (il_inst.operation in [LowLevelILOperation.LLIL_JUMP, LowLevelILOperation.LLIL_JUMP_TO, LowLevelILOperation.LLIL_GOTO]):
-                    print "[ripr] JUMP TARGET: %s" % (str(il_inst.dest))
-                    print dir(il_inst.dest)
-                else:
-                    pass
+        def jumpCallback(dest, instr_addr):
+            print "[ripr] JUMP TARGET: %s" % (dest)
+
+        self.engine.branches_from_func(address, callCallback, jumpCallback)
         return self.codeRefs
 
-    def _find_stringRefs(self, fobj):
+    def _find_stringRefs(self, address):
         '''
             Look for strings that are referenced in the selected code.
         '''
+
         ret = []
-        for st in self.engine.bv.strings:
-            for ref in self.engine.bv.get_code_refs(st.start, st.length):
-                print ref.address
-                if (fobj.get_basic_block_at(ref.address) != None):
+        for stringStart,stringLength in self.engine.get_strings():
+            for refAddress  in self.engine.get_refs_to(stringStart): # Ignored the length
+                if (self.engine.function_contains_addr(address, refAddress)):
                     print "[ripr] Found string reference: 0x%x" % (ref.address)
-                    self._mark_identified_data(fobj, ref.address)
-                    dref = riprDataRef(st.start, st.length, 'str')
+                    self._mark_identified_data(address, refAddress)
+                    dref = riprDataRef(stringStart, stringLength, 'str')
                     self.dataRefs.append(dref)
         return ret
         
-    def _find_symbolRefs(self, fobj):
+    def _find_symbolRefs(self, address):
         '''
             Look for data symbols that are referenced in the selected code.
         '''
         ret = []
-        symbols = {sym: self.engine.bv.symbols[sym] for sym in self.engine.bv.symbols if self.engine.bv.symbols[sym].type == 'DataSymbol'}
-
-        for sym in symbols:
-            for ref in self.engine.bv.get_code_refs(symbols[sym].address):
-                if (fobj.get_basic_block_at(ref.address) != None):
-                    print "[ripr] Found Symbol Reference: 0x%x references 0x%x" % (ref.address, symbols[sym].address)
-                    self._mark_identified_data(fobj, ref.address)
-                    dref = riprDataRef(symbols[sym].address, -1, 'sym')
+        symbols = self.engine.get_data_symbols()
+        for symStart in symbols:
+            for refAddress in self.engine.get_refs_to(symStart):
+                if self.engine.function_contains_addr(address, refAddress):
+                    print "[ripr] Found Symbol Reference: 0x%x references 0x%x" % (refAddress, symStart)
+                    self._mark_identified_data(address, refAddress)
+                    dref = riprDataRef(symStart, -1, 'sym')
                     self.dataRefs.append(dref)
-                    ret.append(symbols[sym].address)
+                    ret.append(symStart)
         return ret
 
-    def _simpleDataScan(self, fobj):
+    def _simpleDataScan(self, address):
         ret = []
-        ret += self._find_stringRefs(fobj)
-        ret += self._find_symbolRefs(fobj)
+        ret += self._find_stringRefs(address)
+        ret += self._find_symbolRefs(address)
         return ret
 
     def dataScan(self, address):
@@ -147,42 +134,20 @@ class depScanner(object):
         '''
         print "[ripr] Inside dataScan"
         ret = []
-        # Get a Function object at this address
-        fobj = self.engine.bv.get_function_at(address)
         
         # Find the low-hanging fruit
-        ret += self._simpleDataScan(fobj)
+        ret += self._simpleDataScan(address)
 
-        # Iterate over all instructions in each basic block
-        for block in fobj.low_level_il:
-            for il_inst in block:
-                constants = fobj.get_constants_referenced_by(il_inst.address)
-                # Check if constant is a likely pointer
-                for const in constants:
-                    if self.engine.bv.is_valid_offset(const.value):
-                        print "Found Potential Pointer: %s" % (const)
-                        self._mark_identified_data(fobj, il_inst.address)
-                        dref = riprDataRef(const.value, -1, 'ptr')
-                        self.dataRefs.append(dref)
-                        ret.append(const.value)
-                # Memory things 
-                if (il_inst.operation in [LowLevelILOperation.LLIL_LOAD, LowLevelILOperation.LLIL_STORE, LowLevelILOperation.LLIL_CONST, LowLevelILOperation.LLIL_UNIMPL_MEM, LowLevelILOperation.LLIL_SET_REG]):
-                    print "[ripr] Found memory based instruction"
-                    print "%s ::> %s" % (il_inst, il_inst.operation)
-                    print il_inst.operands
-                    if (il_inst.operation == LowLevelILOperation.LLIL_STORE):
-                        try:
-                            if self.engine.bv.is_valid_offset(il_inst.operands[0].value):
-                                val = il_inst.operands[0].value
-                                print "Need to mmap; %x" % val
-                                self._mark_identified_data(fobj, il_inst.address)
-                                dref = riprDataRef(val, -1, 'ptr')
-                                self.dataRefs.append(dref)
-                                ret.append(val)
-                        except:
-                            pass
+        # Iterate over all instructions for potential pointers
+        for target, instrAddr in self.engine.scan_potential_pointers(address):
+            if self.engine.is_plausible_pointer(target):
+                print "Found Potential Pointer: %s" % (target)
+                self._mark_identified_data(address, instrAddr)
+                dref = riprDataRef(target, -1, 'ptr')
+                self.dataRefs.append(dref)
+                ret.append(target)
 
-            return set(ret)
+        return set(ret)
 
 class convenienceScanner(object):
     

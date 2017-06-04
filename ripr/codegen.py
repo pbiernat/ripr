@@ -16,7 +16,6 @@ except:
 
 # ripr imports
 import analysis_engine as ae
-import gui
 import dependency as dep
 
 
@@ -342,10 +341,10 @@ class genwrapper(object):
         build_funcs = []
         # Get a list of names for hook functions
         for impCall in self.impCallTargets:
-            if impCall.symbol.name not in build_funcs:
-                build_funcs.append(impCall.symbol.name)
+            if str(impCall.symbol) not in build_funcs:
+                build_funcs.append(str(impCall.symbol))
             
-            out[impCall.address + impCall.inst_len] = "hook_%s" % impCall.symbol.name
+            out[impCall.address + impCall.inst_len] = "hook_%s" % str(impCall.symbol)
 
         # Generate stubs for the hooked functions
         for func in build_funcs:

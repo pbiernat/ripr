@@ -1,6 +1,5 @@
 from codegen import *
 import analysis_engine as ae
-import gui
 import dependency as dep
 
 ### Global for listing all chunks of code for which we have tried to create a python wrapper.
@@ -86,7 +85,7 @@ class Packager(object):
 
         # Generate what we currently have and show the results
         self.codeobj.generate_class()
-        self.engine.bv.show_plain_text_report("Generated Code: %s" % self.codeobj.name, self.codeobj.final)
+        self.engine.display_info("Generated Code: %s" % self.codeobj.name, self.codeobj.final)
 
     def package_region(self):
         '''
@@ -171,11 +170,11 @@ class Packager(object):
         pagesize = self.engine.get_page_size()
         secs = []
         for ref in dataRefs: 
-            sections = self.engine.bv.get_sections_at(ref.address)
+            sections = [self.engine.find_section(ref.address)]
             secs += sections
-        for sec in secs:
-            self.codeobj.add_data(self.engine.read_bytes(sec.start, sec.length), sec.start)
-            self.codeobj.add_mmap(sec.start)
+        for sec_start, sec_end, sec_name in secs:
+            self.codeobj.add_data(self.engine.read_bytes(sec_start, sec_end - sec_start), sec_start)
+            self.codeobj.add_mmap(sec_start)
 
     def map_minimal_data(self, dataRefs):
         '''
