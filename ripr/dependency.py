@@ -99,7 +99,7 @@ class depScanner(object):
         for stringStart,stringLength in self.engine.get_strings():
             for refAddress  in self.engine.get_refs_to(stringStart): # Ignored the length
                 if (self.engine.function_contains_addr(address, refAddress)):
-                    print "[ripr] Found string reference: 0x%x" % (ref.address)
+                    print "[ripr] Found string reference: 0x%x" % (refAddress)
                     self._mark_identified_data(address, refAddress)
                     dref = riprDataRef(stringStart, stringLength, 'str')
                     self.dataRefs.append(dref)

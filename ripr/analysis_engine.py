@@ -233,7 +233,7 @@ class bn_engine(aengine):
                 return self.bv.arch.assemble('mov al, [%s]' % address)[0]
 
     def get_imports(self):
-        return {self.bv.symbols[sym].address : self.bv.symbols[sym] for sym in self.bv.symbols if self.bv.symbols[sym].type == SymbolType.ImportedFunctionSymbol}
+        return {self.bv.symbols[sym].address : self.bv.symbols[sym].name for sym in self.bv.symbols if self.bv.symbols[sym].type == SymbolType.ImportedFunctionSymbol}
 
 
     def get_instruction_length(self, address):
@@ -249,7 +249,7 @@ class bn_engine(aengine):
                     callCallback(il_inst.dest.value, il_inst.address)
                 # Check Jump targets
                 elif (il_inst.operation in [LowLevelILOperation.LLIL_JUMP, LowLevelILOperation.LLIL_JUMP_TO, LowLevelILOperation.LLIL_GOTO]):
-                    branchCallback(il_inst.dest.value, il_inst.address)
+                    branchCallback(il_inst.dest, il_inst.address)
                 else:
                     pass
 
@@ -264,11 +264,11 @@ class bn_engine(aengine):
 
     def get_refs_to(self, address):
         fobj = self.bv.get_function_at(address)
-        for ref in self.bv.get_code_refs(symbols[sym].address):
+        for ref in self.bv.get_code_refs(address):
             yield ref.address
 
     def function_contains_addr(self, func_addr, testAddr):
-        fobj = self.bv.get_function_at(address)
+        fobj = self.bv.get_function_at(func_addr)
         return (fobj.get_basic_block_at(testAddr) != None)
 
 
@@ -287,7 +287,7 @@ class bn_engine(aengine):
                     print "%s ::> %s" % (il_inst, il_inst.operation)
                     print il_inst.operands
                     if (il_inst.operation == LowLevelILOperation.LLIL_STORE):
-                        yield il_inst
+                        #yield il_inst.address
                         try:
 
                             yield self.bv.is_valid_offset(il_inst.operands[0].value), il_inst.address
