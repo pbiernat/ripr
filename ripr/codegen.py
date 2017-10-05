@@ -5,11 +5,6 @@ import sys
 import os
 
 try:
-    import idaapi, idautils, idc
-except:
-    print "[!] Not running in IDA"
-
-try:
     from binaryninja import *
 except:
     print "[+] Not running in BinaryNinja"
@@ -17,11 +12,6 @@ except:
 # ripr imports
 import analysis_engine as ae
 import dependency as dep
-
-
-
-# Background highlight color
-COLOR = 0xdd7700 #BBGGRR
 
 class codeSlice(object):
     '''
@@ -393,5 +383,3 @@ class genwrapper(object):
 
         # Put the pieces together
         self.final = imp + defn + init + emuinit + codevars + datavars + mmaps + writes + hookdict + hooks + start_unicorn + runfns +"\n"
-        
-        print self.final
