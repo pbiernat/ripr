@@ -73,13 +73,17 @@ class depScanner(object):
         print "[ripr] Inside branchScan"
         ret = []
         def callCallback(dest, instr_addr):
+            if type(dest) != int:
+                try:
+                    dest = dest.value
+                except:
+                    return
             if (dest in self.imports):
                 print "[ripr] Found imported Call target..."
                 self._mark_imported_call(address, instr_addr, dest)
 
             elif  (self.codeobj.data_saved(dest) == False):
                 print "[ripr] Found LLIL CALL instruction"
-                print "[ripr] IL_INST Dest:"
                 self._mark_additional_branch(address, instr_addr, dest, "call")
             else:
                 print "[ripr] Target address already mapped"
@@ -141,7 +145,7 @@ class depScanner(object):
         # Iterate over all instructions for potential pointers
         for target, instrAddr in self.engine.scan_potential_pointers(address):
             if self.engine.is_plausible_pointer(target):
-                print "Found Potential Pointer: %s" % (target)
+                print "Found Potential Pointer: %s instaddr %s" % (hex(target), hex(instrAddr))
                 self._mark_identified_data(address, instrAddr)
                 dref = riprDataRef(target, -1, 'ptr')
                 self.dataRefs.append(dref)

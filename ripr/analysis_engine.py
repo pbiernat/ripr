@@ -243,7 +243,6 @@ class bn_engine(aengine):
         fobj = self.bv.get_function_at(address)
         for block in fobj.low_level_il:
             for il_inst in block:
-                print il_inst
                 if (il_inst.operation == LowLevelILOperation.LLIL_CALL):
                     #core.LLIL_JUMP, core.LLIL_JUMP_TO, core.LLIL_GOTO]):
                     callCallback(il_inst.dest.value, il_inst.address)
@@ -277,6 +276,10 @@ class bn_engine(aengine):
         fobj = self.bv.get_function_at(func_addr)
         for block in fobj.low_level_il:
             for il_inst in block:
+                # We are only interested in data references here.
+                if il_inst.operation in [LowLevelILOperation.LLIL_CALL, LowLevelILOperation.LLIL_JUMP, LowLevelILOperation.LLIL_GOTO]:
+                    continue
+
                 constants = fobj.get_constants_referenced_by(il_inst.address)
                 # Check if constant is a likely pointer
                 for const in constants:
