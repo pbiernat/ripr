@@ -1,37 +1,20 @@
 '''
-    UI Functionality should be implemented here.
+    UI Functionality is implemented here.
 '''
 import sys
 if (sys.platform == 'win32'):
     sys.path.append("C:\\Python27\\lib\\site-packages")
+try:
+    from PyQt5 import QtWidgets, QtGui, QtCore
+    from PyQt5.QtCore import Qt
+    from defunct.widgets import BinjaWidget
+    import defunct.widgets
+    qtAvailable = True
+except:
+    qtAvailable = False
 
-from PyQt5 import QtWidgets, QtGui, QtCore
-from PyQt5.QtCore import Qt
-
-from defunct.widgets import BinjaWidget
-import defunct.widgets
 from binaryninja import *
 
-class MultiChoiceBox(QtWidgets.QDialog):
-    def __init__(self, msg, parent=None):
-        super(MultiChoiceBox, self).__init__(parent)
-
-        msgBox = QtWidgets.QMessageBox()
-        msgBox.setText(msg)
-        msgBox.addButton(QtWidgets.QPushButton('Nop Out Calls'), QtWidgets.QMessageBox.YesRole)
-        msgBox.addButton(QtWidgets.QPushButton('Hook Calls'), QtWidgets.QMessageBox.NoRole)
-        msgBox.addButton(QtWidgets.QPushButton('Cancel Packaging'), QtWidgets.QMessageBox.RejectRole)
-        self.ret = msgBox.exec_()
-       
-    def getResp(self):
-        print self.ret
-        if (self.ret == 0):
-            return 'nop'
-        elif (self.ret == 1):
-            return 'hook'
-        else:
-            return 'cancel'
-        
 class riprTable(QtWidgets.QTableWidget):
     '''
         Handle all QTable related code here to keep the main GUI
@@ -100,6 +83,9 @@ class riprWidget(BinjaWidget):
         "Helper" Functions are also defined here for simplicity
     '''
     def __init__(self, emuchunks=None):
+        self.qtAvailable = qtAvailable
+        if not qtAvailable:
+            return
         super(riprWidget, self).__init__('ripr')
         self.emuchunks = emuchunks
         self._table = riprTable(emuchunks=emuchunks)
@@ -113,6 +99,8 @@ class riprWidget(BinjaWidget):
             This function updates the table with new code objects received from the packager
             at the end of a "ripping" process.
         '''
+        if (not self.qtAvailable):
+            return
         self._table.setRowCount(len(emuchunks))
         self._table.emuchunks = emuchunks
         row = 0
@@ -137,18 +125,29 @@ class riprWidget(BinjaWidget):
 
 
     ### Convenience wrappers for some frequently used things
+    def save_file(self, codeobj):
+        fname = interaction.get_save_filename_input("[ripr] Save output")
+        f = open(fname, "w+")
+        f.write(codeobj.final)
+        f.close()
+
+
     def yes_no_box(self, msg):
-        choice = QtWidgets.QMessageBox.question(self, "Binary Ninja - ripr", msg, QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.No)
-        if (choice == QtWidgets.QMessageBox.Yes):
+        choice = interaction.show_message_box("Binary Ninja - ripr", msg, enums.MessageBoxButtonSet.YesNoButtonSet)
+        if choice == enums.MessageBoxButtonResult.YesButton:
             return True
         return False
 
     def text_input_box(self,msg):
-        text, ok = QtWidgets.QInputDialog.getText(self, "Binary Ninja - ripr", msg)
-        if (ok):
-            return text
-        return ''
+        text = interaction.get_text_line_input(msg, "Binary Ninja - ripr")
+        return text
 
     def impCallsOptions(self):
-        x = MultiChoiceBox(msg="Code contains calls to imported functions. How should this be handled?")
-        return x.getResp()
+        msg="Code contains calls to imported functions. How should this be handled?"
+        choice = interaction.get_choice_input(msg, "", ["Hook Calls", "Nop Out Calls", "Cancel"])
+        if choice == 0:
+            return "hook"
+        if choice == 1:
+            return "nop"
+        if choice == 2:
+            return "cancel"

@@ -86,6 +86,8 @@ class Packager(object):
         # Generate what we currently have and show the results
         self.codeobj.generate_class()
         self.engine.display_info("Generated Code: %s" % self.codeobj.name, self.codeobj.final)
+        if not self.ui.qtAvailable:
+            self.ui.save_file(self.codeobj) 
 
     def package_region(self):
         '''
