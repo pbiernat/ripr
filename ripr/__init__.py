@@ -3,12 +3,17 @@ if (sys.platform == 'win32'):
     sys.path.append("C:\\Python27\\lib\\site-packages\\PyQt5")
 try:
     from binaryninja import *
+   
+    # Do not try to load if this is hit from "headless"/python api
+    if core_product_type == '':
+        raise ImportError
 
     # ripr imports
     from analysis_engine import *
     from codegen import *
     from packager import *
     import gui
+
 
     ui = gui.riprWidget()
     def packageFunction(view, fobj):
@@ -21,7 +26,6 @@ try:
         engine = get_engine(view)
         pkg = Packager(isFunc=False, address=start, engine=engine, length=length, ui=ui)
         pkg.package_region()
-
 
     PluginCommand.register_for_function("[ripr] Package Function", "Package Function within Unicorn", packageFunction)
 except ImportError:
