@@ -27,6 +27,23 @@ try:
         pkg = Packager(isFunc=False, address=start, engine=engine, length=length, ui=ui)
         pkg.package_region()
 
+    def packageBasicBlock(view, addr):
+        print "[ripr] Adding Basic Block containing %x " % addr
+        engine = get_engine(view)
+        pkg = Packager(isFunc=False, address=addr, engine=engine, ui=ui)
+        pkg.package_bb()
+
+    def generate_basicBlocks(view, fobj):
+        print "[ripr] Generating code from currently selected basic blocks"
+        engine = get_engine(view)
+        pkg = Packager(isFunc=False, address=fobj.start, engine=engine, ui=ui)
+        pkg.generate_bb_code()
+
     PluginCommand.register_for_function("[ripr] Package Function", "Package Function within Unicorn", packageFunction)
+    
+    PluginCommand.register_for_address("[ripr] Package BasicBlock", "Package Function within Unicorn", packageBasicBlock)
+    
+    PluginCommand.register_for_function("[ripr] Generate Selected BBs", "Package Function within Unicorn", generate_basicBlocks)
+
 except ImportError:
     pass

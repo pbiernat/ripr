@@ -154,15 +154,10 @@ class depScanner(object):
         return set(ret)
 
 class convenienceScanner(object):
-    
-    def __init__(self, fobj, codeobj):
-        self.fobj = None
+    def __init__(self, fobj=None, codeobj=None):
         pass
 
-    def argIdent(self):
-
-        pass
-
-
-
-
+    def argIdent(self, fobj):
+        ftype = fobj.function_type
+        if (ftype):
+            pass

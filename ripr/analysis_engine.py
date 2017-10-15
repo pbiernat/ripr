@@ -168,7 +168,30 @@ class bn_engine(aengine):
         # TODO Other ARM archs that we can deal with as 'arm'
         elif (self.bv.arch.name == 'armv7'):
             return 'arm'
-    
+
+    def mark_gathered_basic_block(self, address):
+        fobj = self.bv.get_functions_containing(address)[0]
+        if (fobj == None):
+            print "FOBJ IS NONE"
+        bb = fobj.get_basic_block_at(address)
+        bb.highlight = HighlightStandardColor.BlackHighlightColor
+
+        fobj.set_comment_at(bb.start, "[ripr] Basic Block will be included in package")
+
+    def clean_gathered_basic_block(self, address):
+        fobj = self.bv.get_functions_containing(address)[0]
+        bb = fobj.get_basic_block_at(address)
+
+        bb.highlight = HighlightStandardColor.NoHighlightColor
+        fobj.set_comment_at(bb.start, '')
+   
+    def get_basic_block_bytes(self, address):
+        bb = self.bv.get_basic_blocks_at(address)
+        if len(bb) != 1:
+            print "[ripr] Address belongs to more than one basic block!"
+
+        bb = bb[0]
+        return {bb.start: codegen.codeSlice(self.read_bytes(bb.start, bb.end-bb.start), bb.start)}
 
     def get_function_bytes(self, address=None, name=None):
         ''' 
@@ -270,33 +293,35 @@ class bn_engine(aengine):
         fobj = self.bv.get_function_at(func_addr)
         return (fobj.get_basic_block_at(testAddr) != None)
 
+    def scan_potential_pointers_bb(self, il_block, fobj):
+        for il_inst in il_block:
+           # We are only interested in data references here.
+            if il_inst.operation in [LowLevelILOperation.LLIL_CALL, LowLevelILOperation.LLIL_JUMP, LowLevelILOperation.LLIL_GOTO, LowLevelILOperation.LLIL_IF, LowLevelILOperation.LLIL_JUMP_TO]:
+                continue
+
+            constants = fobj.get_constants_referenced_by(il_inst.address)
+            # Check if constant is a likely pointer
+            for const in constants:
+                yield const.value, il_inst.address
+            # Memory things
+            if (il_inst.operation in [LowLevelILOperation.LLIL_LOAD, LowLevelILOperation.LLIL_STORE, LowLevelILOperation.LLIL_CONST, LowLevelILOperation.LLIL_UNIMPL_MEM, LowLevelILOperation.LLIL_SET_REG]):
+                print "[ripr] Found memory based instruction"
+                print "%s ::> %s" % (il_inst, il_inst.operation)
+                print il_inst.operands
+                if (il_inst.operation == LowLevelILOperation.LLIL_STORE):
+                #yield il_inst.address
+                    try:
+            
+                        yield self.bv.is_valid_offset(il_inst.operands[0].value), il_inst.address
+                    except:
+                        pass
 
     def scan_potential_pointers(self, func_addr):
         # Iterate over all instructions in each basic block
         fobj = self.bv.get_function_at(func_addr)
         for block in fobj.low_level_il:
-            for il_inst in block:
-                # We are only interested in data references here.
-                if il_inst.operation in [LowLevelILOperation.LLIL_CALL, LowLevelILOperation.LLIL_JUMP, LowLevelILOperation.LLIL_GOTO]:
-                    continue
-
-                constants = fobj.get_constants_referenced_by(il_inst.address)
-                # Check if constant is a likely pointer
-                for const in constants:
-                    yield const.value, il_inst.address
-                # Memory things
-                if (il_inst.operation in [LowLevelILOperation.LLIL_LOAD, LowLevelILOperation.LLIL_STORE, LowLevelILOperation.LLIL_CONST, LowLevelILOperation.LLIL_UNIMPL_MEM, LowLevelILOperation.LLIL_SET_REG]):
-                    print "[ripr] Found memory based instruction"
-                    print "%s ::> %s" % (il_inst, il_inst.operation)
-                    print il_inst.operands
-                    if (il_inst.operation == LowLevelILOperation.LLIL_STORE):
-                        #yield il_inst.address
-                        try:
-
-                            yield self.bv.is_valid_offset(il_inst.operands[0].value), il_inst.address
-                        except:
-                            pass
-
+            for target, instAddr in self.scan_potential_pointers_bb(block, fobj):
+                yield target, instAddr
 
     def is_plausible_pointer(self, candidate_ptr):
         return self.bv.is_valid_offset(candidate_ptr)

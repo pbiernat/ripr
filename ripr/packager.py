@@ -5,6 +5,8 @@ import dependency as dep
 ### Global for listing all chunks of code for which we have tried to create a python wrapper.
 emuchunks = {}
 
+# List of basic block chunks to package for BB mode
+bbChunks = []
 class Packager(object):
     '''
         Packager does the work of getting a codegen object
@@ -60,6 +62,14 @@ class Packager(object):
         targetCode = self.engine.get_region_bytes(address=self.address)
         self.codeobj.add_data(targetCode[0], targetCode[1])
         self.codeobj.add_mmap(targetCode[0])
+
+    def minimal_package_bb(self, address=None):
+        if (address == None):
+            address = self.address
+        targetCode = self.engine.get_basic_block_bytes(address)
+        self.engine.mark_gathered_basic_block(address)
+
+        bbChunks.append(targetCode)
         
 
     def package_function(self):
@@ -88,6 +98,41 @@ class Packager(object):
         self.engine.display_info("Generated Code: %s" % self.codeobj.name, self.codeobj.final)
         if not self.ui.qtAvailable:
             self.ui.save_file(self.codeobj) 
+
+    def package_bb(self):
+        '''
+            This method adds an entry to bbChunks, which can be used later to 
+            generate a package containing only user-specified basic blocks.
+        '''
+        self.minimal_package_bb()
+        print bbChunks
+
+    def cleanup_basic_blocks(self):
+        global bbChunks
+        for bb in bbChunks:
+            self.engine.clean_gathered_basic_block(bb.keys()[0])
+
+    def generate_bb_code(self):
+        global bbChunks
+        if len(bbChunks) == 0:
+            return
+
+        # Set starting address to first basic block selected
+        self.codeobj.startaddr = bbChunks[0].keys()[0]
+
+        self.targetCode = bbChunks
+
+        self.resolve_dependencies()
+
+        self.update_codeobj()
+
+        self.cleanup_basic_blocks()
+        bbChunks = []
+
+        self.codeobj.generate_class()
+        
+        self.engine.display_info("Generated Code: %s" % self.codeobj.name, self.codeobj.final)
+        
 
     def package_region(self):
         '''
@@ -218,9 +263,12 @@ class Packager(object):
         if (self.isFunc == True):
             coderefs = resolv.branchScan(address)
             datarefs = resolv.dataScan(address)
+        else:
+            datarefs = resolv.dataScan(address)
+            coderefs = []
 
         if (resolv.impCalls != []):
-            self.resolve_imported_calls(resolv)        
+            self.resolve_imported_calls(resolv) 
 
         if (coderefs != []):
             if (self.ui.yes_no_box("Target code may depend on outside code, attempt to map automatically?") == True):
