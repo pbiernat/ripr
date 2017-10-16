@@ -50,7 +50,7 @@ class genwrapper(object):
             conPass: Dictionary of applicable convenience passes (set by packager)
             impCallTargets: List of targets of imported calls to catch and hook
     '''
-    def __init__(self, name):
+    def __init__(self, name, isFunc=True):
 
         self.mmap = {}
         # List of (address, data)
@@ -71,6 +71,8 @@ class genwrapper(object):
         self.conPass['ret'] = False
 
         self.impCallTargets = []
+
+        self.isFunc = isFunc
         
     def data_saved(self, addr): 
         return any(lowaddr <= addr <= highaddr for (lowaddr, highaddr) in self.saved_ranges)
@@ -130,7 +132,6 @@ class genwrapper(object):
             out = ' ' * (indent * 4) + "self.mu.reg_write(UC_X86_REG_RSP, 0x7fffffff)\n"
         
         elif self.arch == 'arm':    
-            #self.add_mmap(0xbefdf000,0x21000) #Debug addrs, should work regardless for most stuff
             self.add_mmap(0x7ffff000)
             out = ' ' * (indent * 4) + "self.mu.reg_write(UC_ARM_REG_SP, 0x7fffffff)\n"
         ## TODO Add support for other architectures supported by Unicorn and Binja 
@@ -168,7 +169,10 @@ class genwrapper(object):
         out = ' ' * (indent * 4) + "try:\n"
         out +=  ' ' * ((indent + 1) * 4) + "self.mu.emu_start(startaddr, 0)\n"
         out += ' ' * (indent * 4) + "except Exception as e:\n"
-        out += self.generate_return_guard(indent=indent+1)
+        if self.isFunc:
+            out += self.generate_return_guard(indent=indent+1)
+        else:
+            out += ' ' * (indent + 1 ) * 4 + "pass\n"
         return out
 
     def generate_start_unicorn_func(self, indent = 1):

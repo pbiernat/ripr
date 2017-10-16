@@ -23,7 +23,7 @@ class Packager(object):
         # List of Contiguous code we're interested in
         self.targetCode = []
         
-        self.codeobj = genwrapper(self.ui.text_input_box("Enter Class Name"))
+        self.codeobj = genwrapper('', isFunc)
         self.arch = self.engine.get_arch()
         self.codeobj.arch = self.arch
 
@@ -77,6 +77,7 @@ class Packager(object):
             This method handles filling in as much relevant information as possible into our current instance of codeobj
             about the function to be emulated. It is a high-level encapsulation of multipe packaging and analysis methods.
         '''
+        self.codeobj.name = self.ui.text_input_box("Enter Class Name")
         # Get the bare minimum required information.
         self.minimal_package_function()
 
@@ -107,16 +108,12 @@ class Packager(object):
         self.minimal_package_bb()
         print bbChunks
 
-    def cleanup_basic_blocks(self):
-        global bbChunks
-        for bb in bbChunks:
-            self.engine.clean_gathered_basic_block(bb.keys()[0])
 
     def generate_bb_code(self):
         global bbChunks
         if len(bbChunks) == 0:
             return
-
+        self.codeobj.name = self.ui.text_input_box("Enter Class Name")
         # Set starting address to first basic block selected
         self.codeobj.startaddr = bbChunks[0].keys()[0]
 
@@ -125,13 +122,18 @@ class Packager(object):
         self.resolve_dependencies()
 
         self.update_codeobj()
-
+        
+        # Clean up our modifications
         self.cleanup_basic_blocks()
         bbChunks = []
 
         self.codeobj.generate_class()
-        
         self.engine.display_info("Generated Code: %s" % self.codeobj.name, self.codeobj.final)
+    
+    def cleanup_basic_blocks(self):
+        global bbChunks
+        for bb in bbChunks:
+            self.engine.clean_gathered_basic_block(bb.keys()[0])
         
 
     def package_region(self):
