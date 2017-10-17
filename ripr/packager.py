@@ -106,7 +106,6 @@ class Packager(object):
             generate a package containing only user-specified basic blocks.
         '''
         self.minimal_package_bb()
-        print bbChunks
 
 
     def generate_bb_code(self):
@@ -248,7 +247,7 @@ class Packager(object):
 
     def resolve_codeRefs(self, coderefs):
         for ref in coderefs:
-            print "Found CodeRef: %s::%s" % (ref.address, ref.type)
+            print "Found CodeRef: %x::%s" % (ref.address, ref.type)
             if (ref.type == 'call'):
                 self.minimal_package_function(address=ref.address)
                 self.resolve_dependencies(address=ref.address)
@@ -262,12 +261,14 @@ class Packager(object):
             address = self.address 
 
         print "Resolving Dependencies for %x" % address
-        if (self.isFunc == True):
-            coderefs = resolv.branchScan(address)
+        if self.isFunc:
+            coderefs = resolv.branchScan(address, self.isFunc)
             datarefs = resolv.dataScan(address)
         else:
             datarefs = resolv.dataScan(address)
             coderefs = []
+            for bb in bbChunks:
+                coderefs += resolv.branchScan(bb.keys()[0], self.isFunc) 
 
         if (resolv.impCalls != []):
             self.resolve_imported_calls(resolv) 

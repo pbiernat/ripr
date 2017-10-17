@@ -287,7 +287,10 @@ class genwrapper(object):
         decl = ' ' * 4 + "def run(self):\n"
 
         stk = self.generate_stack_initialization(indent=2)
-        marker = self.generate_return_guard_marker(indent=2)
+        if self.isFunc:
+            marker = self.generate_return_guard_marker(indent=2)
+        else:
+            marker = ''
         emus = ' ' * ((indent) * 4) + "self._start_unicorn(%s)\n" % (hex(self.startaddr))
 
         out += decl + stk + marker + emus

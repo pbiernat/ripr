@@ -65,13 +65,12 @@ class depScanner(object):
     def _mark_identified_data(self, func_addr, ref_addr):
         self.engine.highlight_instr(func_addr, ref_addr, "yellow")
     
-    def branchScan(self, address):
+    def branchScan(self, address, isFunc=True):
         '''
             Function is responsible for mapping calls and jumps
             that are outside the current selection's bounds, if possible.
         '''
         print "[ripr] Inside branchScan"
-        ret = []
         def callCallback(dest, instr_addr):
             if type(dest) != int:
                 try:
@@ -91,7 +90,13 @@ class depScanner(object):
         def jumpCallback(dest, instr_addr):
             print "[ripr] JUMP TARGET: %s" % (dest)
 
-        self.engine.branches_from_func(address, callCallback, jumpCallback)
+        if isFunc:
+            self.engine.branches_from_func(address, callCallback, jumpCallback)
+        else:
+            ibb = self.engine.find_llil_block_from_addr(address)
+            print "FOUND BB FROM ADDR::"
+            print ibb
+            self.engine.branches_from_block(ibb, callCallback, jumpCallback)
         return self.codeRefs
 
     def _find_stringRefs(self, address):

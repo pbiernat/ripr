@@ -262,18 +262,32 @@ class bn_engine(aengine):
     def get_instruction_length(self, address):
         return self.bv.get_instruction_length(address)
 
+    def find_llil_block_from_addr(self, address):
+        print "ADDRESS IS :: %x" % address
+        fobj = self.bv.get_functions_containing(address)
+        if len(fobj) > 1:
+            print "[ripr] Multiple Functions contain this address!!"
+        fobj = fobj[0]
+        print "FOBJ LLIL"
+        bbindex = fobj.get_basic_block_at(address).index
+        print bbindex
+        print fobj.low_level_il.basic_blocks[bbindex]
+        return fobj.low_level_il.basic_blocks[bbindex]
+
+    def branches_from_block(self, block, callCallback, branchCallback):
+        for il_inst in block:
+            if (il_inst.operation == LowLevelILOperation.LLIL_CALL):
+                callCallback(il_inst.dest.value, il_inst.address)
+            # Check Jump targets
+            elif (il_inst.operation in [LowLevelILOperation.LLIL_JUMP, LowLevelILOperation.LLIL_JUMP_TO, LowLevelILOperation.LLIL_GOTO]):
+                branchCallback(il_inst.dest, il_inst.address)
+            else:
+                pass
+
     def branches_from_func(self, address, callCallback, branchCallback):
         fobj = self.bv.get_function_at(address)
         for block in fobj.low_level_il:
-            for il_inst in block:
-                if (il_inst.operation == LowLevelILOperation.LLIL_CALL):
-                    #core.LLIL_JUMP, core.LLIL_JUMP_TO, core.LLIL_GOTO]):
-                    callCallback(il_inst.dest.value, il_inst.address)
-                # Check Jump targets
-                elif (il_inst.operation in [LowLevelILOperation.LLIL_JUMP, LowLevelILOperation.LLIL_JUMP_TO, LowLevelILOperation.LLIL_GOTO]):
-                    branchCallback(il_inst.dest, il_inst.address)
-                else:
-                    pass
+            self.branches_from_block(block, callCallback, branchCallback)
 
     def get_data_symbols(self):
         for sym in self.bv.symbols:
@@ -340,7 +354,7 @@ class bn_engine(aengine):
 
 
     def highlight_instr(self, func_addr, instrAddr, color):
-        fobj = self.bv.get_function_at(func_addr)
+        fobj = self.bv.get_functions_containing(func_addr)[0]
         if color == "red":
             bn_color = HighlightStandardColor.RedHighlightColor
         elif color == "blue":
@@ -352,7 +366,7 @@ class bn_engine(aengine):
         fobj.set_user_instr_highlight(instrAddr, bn_color)
 
     def add_comment(self, func_addr, instrAddr, comment):
-        fobj = self.bv.get_function_at(func_addr)
+        fobj = self.bv.get_functions_containing(func_addr)[0]
         fobj.set_comment(instrAddr, "[ripr] " + comment)
 
     def display_info(self, info1, info2):
