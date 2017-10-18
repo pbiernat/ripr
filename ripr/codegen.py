@@ -13,6 +13,29 @@ except:
 import analysis_engine as ae
 import dependency as dep
 
+class callConv(object):
+    def __init__(self, name, arch):
+        self.name = name
+        self.arch = arch
+
+    def gen_arg_number(self, argno):
+        pass
+
+class x64callConv(callConv):
+    def __init__(self, name, arch):
+        self.name = name
+        self.arch = arch
+
+    def gen_arg_number(self, argno):
+        regs = ["UC_X86_REG_RDI", "UC_X86_REG_RSI", "UC_X86_REG_RDX"]
+        if argno <= len(regs):
+            return "self.mu.reg_write(%s, arg_%x)\n" % (regs[argno], argno)
+        # TODO Stack based args/etc ...
+
+class armcallConv(callConv):
+    def __init__(self, name, arch):
+        pass 
+
 class codeSlice(object):
     '''
         A container class for a slice of code.
@@ -20,7 +43,6 @@ class codeSlice(object):
     def __init__(self, code, address):
         self.code_bytes = code
         self.address = address
-        self.isNewPartition = False
 
 
 class genwrapper(object):
@@ -280,17 +302,37 @@ class genwrapper(object):
         else:
             print '[ripr] Unsupported Arch'
 
+    def generate_run_with_args(self, indent=1):
+        decl = ' ' * 4 + "def run(self"
+        args = self.conPass['args']
+        for i in range(0, len(args)):
+            decl += ", arg_%x" % i
+        decl += '):\n'
+
+        # TODO Calling conventions 
+        if self.arch == 'x64':
+            cc = x64callConv("linux", "x64")
+            for i in range(0, len(args)):
+                decl += ' ' * (4 * (indent + 1)) + cc.gen_arg_number(i)
+        print decl
+
+        return decl
+                
+
    
     def generate_run_functions(self, indent = 1):
-        # If this is partitioned code, generate multiple run functions for each partition
         out = ''
-        decl = ' ' * 4 + "def run(self):\n"
+        if 'args' in self.conPass.keys():
+            decl = self.generate_run_with_args()
+        else:
+            decl = ' ' * 4 + "def run(self):\n"
 
         stk = self.generate_stack_initialization(indent=2)
         if self.isFunc:
             marker = self.generate_return_guard_marker(indent=2)
         else:
             marker = ''
+
         emus = ' ' * ((indent) * 4) + "self._start_unicorn(%s)\n" % (hex(self.startaddr))
 
         out += decl + stk + marker + emus

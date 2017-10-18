@@ -158,11 +158,28 @@ class depScanner(object):
 
         return set(ret)
 
+class ilVar(object):
+    def __hash__(self):
+        return self.var.__hash__()
+
+    def __eq__(self, other):
+        return self.var == other.var
+
+    def __init__(self, var, mil):
+        self.var = var
+        self.mil = mil
+
 class convenienceScanner(object):
-    def __init__(self, fobj=None, codeobj=None):
+    def __init__(self, engine):
+        self.engine = engine
         pass
 
-    def argIdent(self, fobj):
-        ftype = fobj.function_type
-        if (ftype):
-            pass
+    def argIdent(self, addr, isFunc):
+        fobj = self.engine.bv.get_functions_containing(addr)
+        if len(fobj) > 1:
+            return None
+        fobj = fobj[0]
+        if (isFunc):
+            ftype = fobj.function_type
+            return ftype.parameters
+            

@@ -39,8 +39,16 @@ class Packager(object):
             This function is a wrapper for determining which convenience features can 
             be enabled during code generation.
         '''
+        c = dep.convenienceScanner(self.engine)
         if (self.isFunc == True and self.codeobj.arch in ['x64', 'x86', 'arm']):
             self.codeobj.conPass['ret'] = True
+
+        if (self.isFunc):
+            args = None
+            if self.ui.yes_no_box("Attempt to automatically fill in function arguments?"):
+                args = c.argIdent(self.address, self.isFunc)
+        if args:
+            self.codeobj.conPass['args'] = args
 
     def minimal_package_function(self, address=None):
         '''
