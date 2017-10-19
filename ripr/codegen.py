@@ -408,6 +408,12 @@ class genwrapper(object):
     def generate_hookdict(self, hookd, indent=1):
         return ' ' * (indent * 4) + "self.hookdict = %s\n" % hookd
 
+    def generate_unset_var_comments(self):
+        out = '# Variables listed below should be filled in: \n'
+        vs = self.conPass['unset_vars']
+        for v in vs:
+            out += "# %s %s --> %s %s \n" % (v.var.type, v.var, v.var.source_type, v.reg)
+        return out
 
     def generate_class(self):
         '''
@@ -415,6 +421,9 @@ class genwrapper(object):
         '''
         self.code = sorted(self.code, key=lambda x: x.address)
         
+        comments = ''
+        if "unset_vars" in self.conPass.keys():
+            comments += self.generate_unset_var_comments()
         # Static Strings
         defn = "class %s(object):\n" % (self.name)
         imp = "from unicorn import *\n" + self.imp_consts() + "import struct\n"
@@ -445,4 +454,4 @@ class genwrapper(object):
         start_unicorn = self.generate_start_unicorn_func()
 
         # Put the pieces together
-        self.final = imp + defn + init + emuinit + codevars + datavars + mmaps + writes + hookdict + hooks + start_unicorn + runfns +"\n"
+        self.final = comments + imp + defn + init + emuinit + codevars + datavars + mmaps + writes + hookdict + hooks + start_unicorn + runfns +"\n"

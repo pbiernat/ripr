@@ -5,6 +5,7 @@
 '''
 
 import analysis_engine as ae
+from binaryninja import *
 
 class ImportedCall(object):
     '''
@@ -168,6 +169,19 @@ class ilVar(object):
     def __init__(self, var, mil):
         self.var = var
         self.mil = mil
+        
+        self.reg = None
+        try:
+            r = self.mil.low_level_il
+            while(hasattr(r, 'src')):
+                r = r.src
+
+            for op in r.operands:
+                if op.operation in [LowLevelILOperation.LLIL_REG, LowLevelILOperation.LLIL_REG_SSA]:
+                    self.reg = op.tokens[0]
+                    break
+        except:
+            pass
 
 class convenienceScanner(object):
     def __init__(self, engine):
@@ -198,4 +212,6 @@ class convenienceScanner(object):
 
             unset_vars = set(unset_vars)
             for uVar in unset_vars:
-                self.engine.highlight_instr(bb.keys()[0], uVar.mil.address, "blue")     
+                self.engine.highlight_instr(bb.keys()[0], uVar.mil.address, "orange") 
+
+            return unset_vars

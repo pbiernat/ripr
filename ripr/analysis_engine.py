@@ -370,6 +370,8 @@ class bn_engine(aengine):
             bn_color = HighlightStandardColor.BlueHighlightColor
         elif color == "yellow":
             bn_color = HighlightStandardColor.YellowHighlightColor
+        elif color == "orange":
+            bn_color = HighlightStandardColor.OrangeHighlightColor
         else:
             raise ValueError, "Unsupported color"
         fobj.set_user_instr_highlight(instrAddr, bn_color)

@@ -52,7 +52,7 @@ class Packager(object):
 
 
         if not self.isFunc:
-            c.uninit_vars(bbChunks) 
+            self.codeobj.conPass['unset_vars'] = c.uninit_vars(bbChunks) 
 
     def minimal_package_function(self, address=None):
         '''
