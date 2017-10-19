@@ -263,16 +263,25 @@ class bn_engine(aengine):
         return self.bv.get_instruction_length(address)
 
     def find_llil_block_from_addr(self, address):
-        print "ADDRESS IS :: %x" % address
         fobj = self.bv.get_functions_containing(address)
         if len(fobj) > 1:
             print "[ripr] Multiple Functions contain this address!!"
         fobj = fobj[0]
-        print "FOBJ LLIL"
         bbindex = fobj.get_basic_block_at(address).index
-        print bbindex
-        print fobj.low_level_il.basic_blocks[bbindex]
         return fobj.low_level_il.basic_blocks[bbindex]
+
+    def find_mlil_block_from_addr(self, address):
+        fobj = self.bv.get_functions_containing(address)
+        if len(fobj) > 1:
+            print "[ripr] Multiple Functions contain this address!!"
+            return None
+        fobj = fobj[0]
+        bbindex = fobj.get_basic_block_at(address).index
+        try:
+            ret = fobj.medium_level_il.basic_blocks[bbindex]
+            return ret
+        except:
+            return None
 
     def branches_from_block(self, block, callCallback, branchCallback):
         for il_inst in block:

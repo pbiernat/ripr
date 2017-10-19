@@ -22,15 +22,28 @@ class callConv(object):
         pass
 
 class x64callConv(callConv):
+# TODO Stack based arguments 
     def __init__(self, name, arch):
         self.name = name
         self.arch = arch
 
     def gen_arg_number(self, argno):
-        regs = ["UC_X86_REG_RDI", "UC_X86_REG_RSI", "UC_X86_REG_RDX"]
+        if self.platform == "win":
+            return self.msft(argno)
+        return self.systemV(argno)
+
+    def msft(self, argno):
+        regs = ["UC_X86_REG_RCX", "UC_X86_REG_RDX", "UC_X86_REG_R8", "UC_X86_REG_R9"]
+        
         if argno <= len(regs):
             return "self.mu.reg_write(%s, arg_%x)\n" % (regs[argno], argno)
-        # TODO Stack based args/etc ...
+
+    def systemV(self, argno):
+        regs = ["UC_X86_REG_RDI", "UC_X86_REG_RSI", "UC_X86_REG_RDX", "UC_X86_REG_RCX",\
+                "UC_X86_REG_R8", "UC_X86_REG_R9"]
+        
+        if argno <= len(regs):
+            return "self.mu.reg_write(%s, arg_%x)\n" % (regs[argno], argno)
 
 class armcallConv(callConv):
     def __init__(self, name, arch):
@@ -93,6 +106,7 @@ class genwrapper(object):
         self.conPass['ret'] = False
 
         self.impCallTargets = []
+        self.callConv = None
 
         self.isFunc = isFunc
         

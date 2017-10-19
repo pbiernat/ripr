@@ -43,12 +43,16 @@ class Packager(object):
         if (self.isFunc == True and self.codeobj.arch in ['x64', 'x86', 'arm']):
             self.codeobj.conPass['ret'] = True
 
+        args = None
         if (self.isFunc):
-            args = None
             if self.ui.yes_no_box("Attempt to automatically fill in function arguments?"):
                 args = c.argIdent(self.address, self.isFunc)
-        if args:
-            self.codeobj.conPass['args'] = args
+                if args:
+                    self.codeobj.conPass['args'] = args
+
+
+        if not self.isFunc:
+            c.uninit_vars(bbChunks) 
 
     def minimal_package_function(self, address=None):
         '''
@@ -127,6 +131,8 @@ class Packager(object):
         self.targetCode = bbChunks
 
         self.resolve_dependencies()
+
+        self.convenience_passes()
 
         self.update_codeobj()
         
