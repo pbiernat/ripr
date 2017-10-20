@@ -26,8 +26,10 @@ class x64callConv(callConv):
     def __init__(self, name, arch):
         self.name = name
         self.arch = arch
+        self.platform = ''
 
     def gen_arg_number(self, argno):
+        print "X64"
         if self.platform == "win":
             return self.msft(argno)
         return self.systemV(argno)
@@ -45,9 +47,16 @@ class x64callConv(callConv):
         if argno <= len(regs):
             return "self.mu.reg_write(%s, arg_%x)\n" % (regs[argno], argno)
 
-class armcallConv(callConv):
+class x86callConv(callConv):
     def __init__(self, name, arch):
-        pass 
+        def __init__(self, name, arch):
+            self.name = name
+            self.arch = arch
+
+        # TODO Other calling conventions
+    def gen_arg_number(self, argno):
+        return "self.mu.mem_write(self.mu.reg_read(UC_X86_REG_ESP) + %d, struct.pack('<i', arg_%x))\n" % ( (argno * 4) + 4, argno)
+            
 
 class codeSlice(object):
     '''
@@ -322,17 +331,21 @@ class genwrapper(object):
         for i in range(0, len(args)):
             decl += ", arg_%x" % i
         decl += '):\n'
-
-        # TODO Calling conventions 
+        
+        return decl
+                
+    def generate_fill_in_args(self, indent=1):
+        decl = ''
+        args = self.conPass['args']
         if self.arch == 'x64':
             cc = x64callConv("linux", "x64")
             for i in range(0, len(args)):
-                decl += ' ' * (4 * (indent + 1)) + cc.gen_arg_number(i)
-        print decl
-
-        return decl
-                
-
+                decl += ' ' * (4 * (indent)) + cc.gen_arg_number(i)
+        if self.arch == 'x86':
+            cc = x86callConv("linux", "x86")
+            for i in range(0, len(args)):
+                decl += ' ' * (4 * (indent)) + cc.gen_arg_number(i)
+        return decl 
    
     def generate_run_functions(self, indent = 1):
         out = ''
@@ -342,6 +355,10 @@ class genwrapper(object):
             decl = ' ' * 4 + "def run(self):\n"
 
         stk = self.generate_stack_initialization(indent=2)
+        initArgs = ''
+        if 'args' in self.conPass.keys():
+            initArgs = self.generate_fill_in_args(indent=2)
+
         if self.isFunc:
             marker = self.generate_return_guard_marker(indent=2)
         else:
@@ -349,7 +366,7 @@ class genwrapper(object):
 
         emus = ' ' * ((indent) * 4) + "self._start_unicorn(%s)\n" % (hex(self.startaddr))
 
-        out += decl + stk + marker + emus
+        out += decl + stk + marker + initArgs + emus
         # Check for return value recovery convenience 
         if (self.conPass['ret'] == True):
             out += self.generate_return_conv(indent=2)
