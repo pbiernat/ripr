@@ -143,6 +143,8 @@ class Packager(object):
 
         self.codeobj.generate_class()
         self.engine.display_info("Generated Code: %s" % self.codeobj.name, self.codeobj.final)
+
+        self.ui.save_file(self.codeobj)
     
     def cleanup_basic_blocks(self):
         global bbChunks

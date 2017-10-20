@@ -37,7 +37,7 @@ class x64callConv(callConv):
     def msft(self, argno):
         regs = ["UC_X86_REG_RCX", "UC_X86_REG_RDX", "UC_X86_REG_R8", "UC_X86_REG_R9"]
         
-        if argno <= len(regs):
+        if argno < len(regs):
             return "self.mu.reg_write(%s, arg_%x)\n" % (regs[argno], argno)
 
     def systemV(self, argno):
@@ -49,13 +49,22 @@ class x64callConv(callConv):
 
 class x86callConv(callConv):
     def __init__(self, name, arch):
-        def __init__(self, name, arch):
-            self.name = name
-            self.arch = arch
+        self.name = name
+        self.arch = arch
 
         # TODO Other calling conventions
     def gen_arg_number(self, argno):
         return "self.mu.mem_write(self.mu.reg_read(UC_X86_REG_ESP) + %d, struct.pack('<i', arg_%x))\n" % ( (argno * 4) + 4, argno)
+
+class armcallConv(callConv):
+    def __init__(self, name, arch):
+        self.name = name
+        self.arch = arch
+
+    def gen_arg_number(self, argno):
+        regs = ["UC_ARM_REG_R0", "UC_ARM_REG_R1", "UC_ARM_REG_R2", "UC_ARM_REG_R4"]
+        if argno < len(regs):
+            return "self.mu.reg_write(%s, arg_%x)\n" % (regs[argno], argno)
             
 
 class codeSlice(object):
@@ -343,6 +352,10 @@ class genwrapper(object):
                 decl += ' ' * (4 * (indent)) + cc.gen_arg_number(i)
         if self.arch == 'x86':
             cc = x86callConv("linux", "x86")
+            for i in range(0, len(args)):
+                decl += ' ' * (4 * (indent)) + cc.gen_arg_number(i)
+        if self.arch == 'arm':
+            cc =armcallConv("linux", "x86")
             for i in range(0, len(args)):
                 decl += ' ' * (4 * (indent)) + cc.gen_arg_number(i)
         return decl 
