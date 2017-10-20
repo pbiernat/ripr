@@ -1,6 +1,7 @@
 from codegen import *
 import analysis_engine as ae
 import dependency as dep
+import conScan as con
 
 ### Global for listing all chunks of code for which we have tried to create a python wrapper.
 emuchunks = {}
@@ -39,7 +40,7 @@ class Packager(object):
             This function is a wrapper for determining which convenience features can 
             be enabled during code generation.
         '''
-        c = dep.convenienceScanner(self.engine)
+        c = con.convenienceScanner(self.engine)
         if (self.isFunc == True and self.codeobj.arch in ['x64', 'x86', 'arm']):
             self.codeobj.conPass['ret'] = True
 
