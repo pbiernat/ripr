@@ -267,9 +267,9 @@ class Packager(object):
             print "Found CodeRef: %x::%s" % (ref.address, ref.type)
             if (ref.type == 'call'):
                 self.minimal_package_function(address=ref.address)
-                self.resolve_dependencies(address=ref.address)
+                self.resolve_dependencies(address=ref.address, isFunc=True)
 
-    def resolve_dependencies(self, address=None):
+    def resolve_dependencies(self, address=None, isFunc=None):
         '''
             This method is a high-level wrapper for finding data our target code depends on.
         '''
@@ -277,8 +277,11 @@ class Packager(object):
         if (address == None):
             address = self.address 
 
+        if (isFunc == None):
+            isFunc = self.isFunc
+
         print "Resolving Dependencies for %x" % address
-        if self.isFunc:
+        if isFunc:
             coderefs = resolv.branchScan(address, self.isFunc)
             datarefs = resolv.dataScan(address)
         else:
