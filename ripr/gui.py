@@ -60,7 +60,6 @@ try:
             try:
                 addr = int(addr[0], 16)
             except: # Show error
-                print "[error]"
                 return 
             codeobj.add_mmap(addr)
     

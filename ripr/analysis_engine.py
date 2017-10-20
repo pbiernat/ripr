@@ -165,7 +165,6 @@ class bn_engine(aengine):
             return 'x86'
         elif (self.bv.arch.name == 'x86_64'):
             return 'x64'
-        # TODO Other ARM archs that we can deal with as 'arm'
         elif (self.bv.arch.name == 'armv7'):
             return 'arm'
 
@@ -266,6 +265,7 @@ class bn_engine(aengine):
         fobj = self.bv.get_functions_containing(address)
         if len(fobj) > 1:
             print "[ripr] Multiple Functions contain this address!!"
+            return None
         fobj = fobj[0]
         bbindex = fobj.get_basic_block_at(address).index
         return fobj.low_level_il.basic_blocks[bbindex]
@@ -328,9 +328,6 @@ class bn_engine(aengine):
                 yield const.value, il_inst.address
             # Memory things
             if (il_inst.operation in [LowLevelILOperation.LLIL_LOAD, LowLevelILOperation.LLIL_STORE, LowLevelILOperation.LLIL_CONST, LowLevelILOperation.LLIL_UNIMPL_MEM, LowLevelILOperation.LLIL_SET_REG]):
-                print "[ripr] Found memory based instruction"
-                print "%s ::> %s" % (il_inst, il_inst.operation)
-                print il_inst.operands
                 if (il_inst.operation == LowLevelILOperation.LLIL_STORE):
                 #yield il_inst.address
                     try:

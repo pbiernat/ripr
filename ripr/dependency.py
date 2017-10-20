@@ -95,8 +95,8 @@ class depScanner(object):
             self.engine.branches_from_func(address, callCallback, jumpCallback)
         else:
             ibb = self.engine.find_llil_block_from_addr(address)
-            print "FOUND BB FROM ADDR::"
-            print ibb
+            if ibb == None:
+                return self.codeRefs
             self.engine.branches_from_block(ibb, callCallback, jumpCallback)
         return self.codeRefs
 
