@@ -131,6 +131,8 @@ try:
         ### Convenience wrappers for some frequently used things
         def save_file(self, codeobj):
             fname = interaction.get_save_filename_input("[ripr] Save output")
+            if fname == None:
+                return
             f = open(fname, "w+")
             f.write(codeobj.final)
             f.close()
@@ -167,6 +169,8 @@ except:
         
         def save_file(self, codeobj):
             fname = interaction.get_save_filename_input("[ripr] Save output")
+            if fname == None:
+                return
             f = open(fname, "w+")
             f.write(codeobj.final)
             f.close()
