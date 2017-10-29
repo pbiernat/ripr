@@ -142,6 +142,10 @@ try:
             if choice == enums.MessageBoxButtonResult.YesButton:
                 return True
             return False
+
+        def msgBox(self, msg):
+            interaction.show_message_box("Binary Ninja - ripr", msg, enums.MessageBoxButtonSet.OKButtonSet)
+
     
         def text_input_box(self,msg):
             text = interaction.get_text_line_input(msg, "Binary Ninja - ripr")

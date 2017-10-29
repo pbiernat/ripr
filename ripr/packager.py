@@ -124,6 +124,7 @@ class Packager(object):
     def generate_bb_code(self):
         global bbChunks
         if len(bbChunks) == 0:
+            self.ui.msgBox("Basic Block package list is empty!")
             return
         self.codeobj.name = self.ui.text_input_box("Enter Class Name")
         # Set starting address to first basic block selected
