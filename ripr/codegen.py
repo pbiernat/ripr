@@ -28,43 +28,71 @@ class x64callConv(callConv):
         self.arch = arch
         self.platform = ''
 
-    def gen_arg_number(self, argno):
+    def gen_arg_number(self, argno, indent=1):
         print "X64"
         if self.platform == "win":
-            return self.msft(argno)
-        return self.systemV(argno)
+            return self.msft(argno, indent)
+        return self.systemV(argno, indent)
 
-    def msft(self, argno):
+    def genPointer(self, arg, regs, indent):
+        ret  = ' ' * (indent * 4) + "argAddr_%x = (%d * 0x1000)\n" % (arg.num, arg.num)
+        ret += ' ' * (indent * 4) + "self.mu.mem_write(argAddr_%x, arg_%x)\n" % (arg.num, arg.num)
+        ret += ' ' * (indent * 4) + "self.mu.reg_write(%s, argAddr_%x)\n" % (regs[arg.num], arg.num)
+        return ret
+
+    def msft(self, arg, indent):
         regs = ["UC_X86_REG_RCX", "UC_X86_REG_RDX", "UC_X86_REG_R8", "UC_X86_REG_R9"]
         
-        if argno < len(regs):
+        if arg.num < len(regs):
             return "self.mu.reg_write(%s, arg_%x)\n" % (regs[argno], argno)
+        return self.genPointer(arg, regs, indent)
 
-    def systemV(self, argno):
+    def systemV(self, arg, indent):
         regs = ["UC_X86_REG_RDI", "UC_X86_REG_RSI", "UC_X86_REG_RDX", "UC_X86_REG_RCX",\
                 "UC_X86_REG_R8", "UC_X86_REG_R9"]
         
-        if argno <= len(regs):
-            return "self.mu.reg_write(%s, arg_%x)\n" % (regs[argno], argno)
+        if arg.num <= len(regs):
+            if (arg.pointerDepth == 0 or arg.pointerDepth > 1):
+                return ' ' * (indent*4) + "self.mu.reg_write(%s, arg_%x)\n" % (regs[arg.num], arg.num)
+            return self.genPointer(arg, regs, indent)
 
 class x86callConv(callConv):
     def __init__(self, name, arch):
         self.name = name
         self.arch = arch
 
+    def genPointer(self, arg, indent):
+        ret = ' ' * (indent * 4) + "argAddr_%x = (%d * 0x1000)\n" % (arg.num, arg.num)
+        ret += ' ' * (indent * 4) + "self.mu.mem_write(argAddr_%x, arg_%x)\n" % (arg.num, arg.num)
+        ret += ' ' * (indent * 4) + "self.mu.mem_write(self.mu.reg_read(UC_X86_REG_ESP) + %d, struct.pack('<i', arg_%x))\n" % ( (arg.num * 4) + 4, arg.num)
+        return ret
+
+
         # TODO Other calling conventions
-    def gen_arg_number(self, argno):
-        return "self.mu.mem_write(self.mu.reg_read(UC_X86_REG_ESP) + %d, struct.pack('<i', arg_%x))\n" % ( (argno * 4) + 4, argno)
+    def gen_arg_number(self, arg, indent):
+        if arg.pointerDepth == 0 or arg.pointerDepth > 1:
+            return ' ' * (indent * 4) + "self.mu.mem_write(self.mu.reg_read(UC_X86_REG_ESP) + %d, struct.pack('<i', arg_%x))\n" % ( (arg.num * 4) + 4, arg.num)
+        return self.genPointer(arg, indent)
 
 class armcallConv(callConv):
     def __init__(self, name, arch):
         self.name = name
         self.arch = arch
 
-    def gen_arg_number(self, argno):
-        regs = ["UC_ARM_REG_R0", "UC_ARM_REG_R1", "UC_ARM_REG_R2", "UC_ARM_REG_R4"]
+    def genPointer(self, arg, regs, indent):
+        ret = ' ' * (indent * 4) + "argAddr_%x = (%d * 0x1000)\n" % (arg.num, arg.num)
+        ret += ' ' * (indent * 4) + "self.mu.mem_write(argAddr_%x, arg_%x)\n" % (arg.num, arg.num)
+        ret += ' ' * (indent * 4) + "self.mu.reg_write(%s, argAddr_%x)\n" % (regs[arg.num], arg.num)
+        return ret
+
+        pass
+
+    def gen_arg_number(self, arg, indent):
+        regs = ["UC_ARM_REG_R0", "UC_ARM_REG_R1", "UC_ARM_REG_R2", "UC_ARM_REG_R3"]
         if argno < len(regs):
-            return "self.mu.reg_write(%s, arg_%x)\n" % (regs[argno], argno)
+            if arg.pointerDepth == 0 or arg.pointerDepth > 1:
+                return ' ' * (indent *4 ) + "self.mu.reg_write(%s, arg_%x)\n" % (regs[arg.num], arg.num)
+            return self.genPointer(arg, regs, indent)
             
 
 class codeSlice(object):
@@ -152,12 +180,27 @@ class genwrapper(object):
         if self.arch == 'x86':
             return 4096
         return 4096
+
+    def generate_argument_mmaps(self, indent=1):
+        '''
+            Map a page for each argument with a pointerDepth of 1.
+        '''
+        out = ''
+        for arg in self.conPass['args']:
+            if arg.pointerDepth == 1:
+                out += ' ' * (indent * 4) + "self.mu.mem_map(0x1000 * %d, 0x1000)\n" % (arg.num)
+        return out
         
     # Unicorn API generation helpers
     def generate_mmap(self, indent = 1):
         out = ''
         for addr in self.mmap:
             out += ' ' * (indent * 4) + "self.mu.mem_map(%s,%s)\n" % (hex(addr), hex(self.mmap[addr]))
+
+        # Map pages for arguments if applicable
+        if 'args' in self.conPass.keys():
+            out += self.generate_argument_mmaps(indent=indent)
+
         return out
     
     def generate_data_vars(self, indent = 1):
@@ -349,15 +392,15 @@ class genwrapper(object):
         if self.arch == 'x64':
             cc = x64callConv("linux", "x64")
             for i in range(0, len(args)):
-                decl += ' ' * (4 * (indent)) + cc.gen_arg_number(i)
+                decl += cc.gen_arg_number(args[i], indent)
         if self.arch == 'x86':
             cc = x86callConv("linux", "x86")
             for i in range(0, len(args)):
-                decl += ' ' * (4 * (indent)) + cc.gen_arg_number(i)
+                decl +=  cc.gen_arg_number(args[i], indent)
         if self.arch == 'arm':
             cc =armcallConv("linux", "x86")
             for i in range(0, len(args)):
-                decl += ' ' * (4 * (indent)) + cc.gen_arg_number(i)
+                decl += cc.gen_arg_number(args[i], indent)
         return decl 
    
     def generate_run_functions(self, indent = 1):

@@ -24,6 +24,12 @@ class ilVar(object):
         except:
             pass
 
+class riprArg(object):
+    def __init__(self, _type, num):
+        self.type = _type
+        self.num = num
+        self.pointerDepth = str(self.type).count("*")
+
 class convenienceScanner(object):
     def __init__(self, engine):
         self.engine = engine
@@ -34,8 +40,13 @@ class convenienceScanner(object):
             return None
         fobj = fobj[0]
         if (isFunc):
+            ret = []
             ftype = fobj.function_type
-            return ftype.parameters
+            for i in range(0, len(ftype.parameters)):
+                arg = ftype.parameters[i]
+                ret.append(riprArg(arg.type, i))
+
+            return ret
             
     def uninit_vars(self, bbs):
         for bb in bbs:
