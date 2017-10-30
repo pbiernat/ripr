@@ -1,4 +1,4 @@
-#ripr
+## ripr
 ---
 ripr is a tool that helps you rip out functionality from binary code and use it from python. It accomplishes this by pairing the [Unicorn-Engine](http://www.unicorn-engine.org/) with [Binary Ninja](https://binary.ninja). Currently, `x86`, `x64`, and `arm` are supported and work to a reasonable degree.
 
@@ -22,12 +22,13 @@ The basic process is simple and looks like this:
 
 1. Clone the repo to your local machine
 2. Place the `ripr` folder into your Binary Ninja plugins directory
+3. (Optional) Install PyQt5 - The latest version of ripr does not require this.
 
 #### Windows
 Installation on Windows typically requires installing PyQt5.
 
 1. Follow the steps above
-2. `pip2.7.exe install python-qt5`
+2. (Optional) `pip2.7.exe install python-qt5`
 
 **Note** ripr assumes your python installation is located at `C:\Python27`. If this is not the case, change the location as appropriate inside `gui.py`.
 
@@ -43,12 +44,23 @@ After packaging, a table will appear listing all of the "packages" you have crea
 
 <img src="https://puu.sh/tnz8C/d0f5141f43.PNG" width="600">
 
-Additionally, ripr will contextualize the packaged function within the GUI.
+#### Packaging Specific Basic Blocks
+You can also choose to only package specific basic blocks rather than the entire function.
+
+Select any instruction inside the basic block of interest, and from the right click menu, choose `[ripr] Package Basic Block`.
+Repeat this for any other basic blocks you want to gather.
+
+Finally, select `Generate Selected BBs` from the context menu to have ripr generate output for them.
+
+#### Contextual Highlighting
+
+ripr will contextualize code you've selected for packaging within the GUI.
 
 * Basic Blocks that have been included or identified have their background color darkened
 * Instructions that have caused a data dependency to be identified are highlighted Yellow
 * Call instructions to imported functions are highlighted Red
 * Call instructions to functions inside the target binary are highlighted Blue
+* Instructions that access unintialized variables are highlighed Orange (Basic Block Mode).
 
 This is meant to give the user visual cues about what ripr has seen and automatically identified, making it easier to see "right off the bat" whether manual modification of the package is necessary.
 
@@ -104,38 +116,30 @@ def hook_puts(self):
 You have full access to all of Unicorn's methods via the `mu` attribute so it is possible to update the emulator context in any way necessary in order to mimic the behavior of a call or perform any actions you'd like instead of the call.
 
 ### Function Arguments
-Currently, function arguments have to manually be inserted by editing the output of ripr.
-
-For example, in 32 bit x86, function arguments are passed via the stack. The first argument is above the return address and following arguments are above it. So to provide two arguments you could do:
+ripr has some support for automatically generating "argument aware" output. When information about a function's parameters is available to Binary Ninja, ripr will generate its `run`
+functions in the form:
 
 ```python
-def run(self, arg1,arg2):
-    self.mu.reg_write(UC_X86_REG_ESP, 0x7fffffff)
-    self.mu.mem_write(0x7fffffff, '\x01\x00\x00\x00')
-
-    self.mu.mem_write(0x80000003, arg1)
-    self.mu.mem_write(0x80000007, arg2)
-    
-
-    self._start_unicorn(0x80484bb)
-    return self.mu.reg_read(UC_X86_REG_EAX)
+def run(self, arg_1, arg_2, ...)
 ```
 
-Of course you will have to make sure endianness is correct. Recommend looking into the struct package.
+When dealing with non-pointer types, your arguments will be written into the expected location in the emulated environment. 
 
-If the arguement is a pointer, such as a char \*, you will have to map memory to store the buffer, write the data in the mapped memory and then provide the address as the argument. For example:
+For "single depth" pointers, (e.g `char *, int *`), ripr will map memory, copy your argument to it, and place the address of that mapped memory into the appropriate location.
+
+For pointers with a depth greater than 1, ripr falls back on default behaviour.
+
+If you need to manually set up arguments, you can directly manipulate unicorn's state via the `mu` attribute.
+For example, assuming you are emulating a 32-bit x86 function, you could do the following:
 
 ```python
-def __init__(self):
-    self.mu.mem_map(0xbffff000,0x200000)
-    #rest of ripr output
+def run(self, arg1, arg2):
+    self.mu.reg_write(UC_X86_REG_ESP, 0x7fffff00)
+    self.mu.mem_write(0x7fffff00, '\x01\x00\x00\x00')
 
-def run(self,arg1):
-    self.mu.reg_write(UC_X86_REG_ESP, 0x7fffffff)
-    self.mu.mem_write(0x7fffffff, '\x01\x00\x00\x00')
+    self.mu.mem_write(0x7fffff04, arg1)
+    self.mu.mem_write(0x7fffff08, arg2)
     
-    self.mu.mem_write(0xbffff068,arg1) #write arg1 in mem
-    self.mu.mem_write(0x80000003,'\x68\xf0\xff\xbf') # point to arg1 in mem as arg1
 
     self._start_unicorn(0x80484bb)
     return self.mu.reg_read(UC_X86_REG_EAX)
@@ -143,10 +147,11 @@ def run(self,arg1):
 
 ### Code Structure
 ---
-* `packager.py` -- High Level Functionality. Code here drives the process of gathering necessary data.
-* `codegen.py`  -- Contains code for actually generating the python output from the gathered data.
+* `packager.py` -- High Level Functionality. Code here drives the process of gathering necessary data
+* `codegen.py`  -- Contains code for actually generating the python output from the gathered data
 * `analysis_engine.py` -- Wraps static analysis engine functionality into a common interface
-* `dependency.py` -- Contains code for finding code and data that the target code needs in order to function corrrectly.
+* `dependency.py` -- Contains code for finding code and data that the target code needs in order to function corrrectly
+* `conScan.py` -- Contains "convenience" analyses that help ripr output easier-to-use code
 * `gui.py` --  A collection of hacks that resembles a user interface
     * Reuses lots of code from the [Binjadock](https://github.com/NOPDev/BinjaDock) project to display results
 
