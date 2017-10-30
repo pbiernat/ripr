@@ -288,7 +288,9 @@ class bn_engine(aengine):
             if (il_inst.operation == LowLevelILOperation.LLIL_CALL):
                 callCallback(il_inst.dest.value, il_inst.address)
             # Check Jump targets
-            elif (il_inst.operation in [LowLevelILOperation.LLIL_JUMP, LowLevelILOperation.LLIL_JUMP_TO, LowLevelILOperation.LLIL_GOTO]):
+            elif (il_inst.operation in [LowLevelILOperation.LLIL_JUMP,\
+                                        LowLevelILOperation.LLIL_JUMP_TO,\
+                                        LowLevelILOperation.LLIL_GOTO]):
                 branchCallback(il_inst.dest, il_inst.address)
             else:
                 pass
@@ -319,7 +321,11 @@ class bn_engine(aengine):
     def scan_potential_pointers_bb(self, il_block, fobj):
         for il_inst in il_block:
            # We are only interested in data references here.
-            if il_inst.operation in [LowLevelILOperation.LLIL_CALL, LowLevelILOperation.LLIL_JUMP, LowLevelILOperation.LLIL_GOTO, LowLevelILOperation.LLIL_IF, LowLevelILOperation.LLIL_JUMP_TO]:
+            if il_inst.operation in [LowLevelILOperation.LLIL_CALL, \
+                                     LowLevelILOperation.LLIL_JUMP, \
+                                     LowLevelILOperation.LLIL_GOTO, \
+                                     LowLevelILOperation.LLIL_IF,   \
+                                     LowLevelILOperation.LLIL_JUMP_TO]:
                 continue
 
             constants = fobj.get_constants_referenced_by(il_inst.address)
@@ -327,7 +333,12 @@ class bn_engine(aengine):
             for const in constants:
                 yield const.value, il_inst.address
             # Memory things
-            if (il_inst.operation in [LowLevelILOperation.LLIL_LOAD, LowLevelILOperation.LLIL_STORE, LowLevelILOperation.LLIL_CONST, LowLevelILOperation.LLIL_UNIMPL_MEM, LowLevelILOperation.LLIL_SET_REG]):
+            if il_inst.operation in [LowLevelILOperation.LLIL_LOAD,\
+                                     LowLevelILOperation.LLIL_STORE,\
+                                     LowLevelILOperation.LLIL_CONST,\
+                                     LowLevelILOperation.LLIL_UNIMPL_MEM,\
+                                     LowLevelILOperation.LLIL_SET_REG]:
+                    # TODO
                 if (il_inst.operation == LowLevelILOperation.LLIL_STORE):
                 #yield il_inst.address
                     try:

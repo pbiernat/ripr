@@ -18,7 +18,8 @@ class ilVar(object):
                 r = r.src
 
             for op in r.operands:
-                if op.operation in [LowLevelILOperation.LLIL_REG, LowLevelILOperation.LLIL_REG_SSA]:
+                if op.operation in [LowLevelILOperation.LLIL_REG,\
+                                    LowLevelILOperation.LLIL_REG_SSA]:
                     self.reg = op.tokens[0]
                     break
         except:
