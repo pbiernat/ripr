@@ -12,10 +12,13 @@ class ilVar(object):
         self.mil = mil
         
         self.reg = None
+        self.srcOperation = None
         try:
             r = self.mil.low_level_il
             while(hasattr(r, 'src')):
                 r = r.src
+
+            self.srcOperation = r
 
             for op in r.operands:
                 if op.operation in [LowLevelILOperation.LLIL_REG,\

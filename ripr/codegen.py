@@ -9,10 +9,6 @@ try:
 except:
     print "[+] Not running in BinaryNinja"
 
-# ripr imports
-import analysis_engine as ae
-import dependency as dep
-
 class callConv(object):
     def __init__(self, name, arch):
         self.name = name
@@ -35,7 +31,7 @@ class x64callConv(callConv):
         return self.systemV(argno, indent)
 
     def genPointer(self, arg, regs, indent):
-        ret  = ' ' * (indent * 4) + "argAddr_%x = (%d * 0x1000)\n" % (arg.num, arg.num)
+        ret  = ' ' * (indent * 4) + "argAddr_%x = (%d * 0x1000)\n" % (arg.num, arg.num+1)
         ret += ' ' * (indent * 4) + "self.mu.mem_write(argAddr_%x, arg_%x)\n" % (arg.num, arg.num)
         ret += ' ' * (indent * 4) + "self.mu.reg_write(%s, argAddr_%x)\n" % (regs[arg.num], arg.num)
         return ret
@@ -62,9 +58,9 @@ class x86callConv(callConv):
         self.arch = arch
 
     def genPointer(self, arg, indent):
-        ret = ' ' * (indent * 4) + "argAddr_%x = (%d * 0x1000)\n" % (arg.num, arg.num)
+        ret = ' ' * (indent * 4) + "argAddr_%x = (%d * 0x1000)\n" % (arg.num, arg.num + 1)
         ret += ' ' * (indent * 4) + "self.mu.mem_write(argAddr_%x, arg_%x)\n" % (arg.num, arg.num)
-        ret += ' ' * (indent * 4) + "self.mu.mem_write(self.mu.reg_read(UC_X86_REG_ESP) + %d, struct.pack('<i', arg_%x))\n" % ( (arg.num * 4) + 4, arg.num)
+        ret += ' ' * (indent * 4) + "self.mu.mem_write(self.mu.reg_read(UC_X86_REG_ESP) + %d, struct.pack('<i', argAddr_%x))\n" % ( (arg.num * 4) + 4, arg.num)
         return ret
 
 
@@ -80,12 +76,10 @@ class armcallConv(callConv):
         self.arch = arch
 
     def genPointer(self, arg, regs, indent):
-        ret = ' ' * (indent * 4) + "argAddr_%x = (%d * 0x1000)\n" % (arg.num, arg.num)
+        ret = ' ' * (indent * 4) + "argAddr_%x = (%d * 0x1000)\n" % (arg.num, arg.num+1)
         ret += ' ' * (indent * 4) + "self.mu.mem_write(argAddr_%x, arg_%x)\n" % (arg.num, arg.num)
         ret += ' ' * (indent * 4) + "self.mu.reg_write(%s, argAddr_%x)\n" % (regs[arg.num], arg.num)
         return ret
-
-        pass
 
     def gen_arg_number(self, arg, indent):
         regs = ["UC_ARM_REG_R0", "UC_ARM_REG_R1", "UC_ARM_REG_R2", "UC_ARM_REG_R3"]
@@ -188,7 +182,7 @@ class genwrapper(object):
         out = ''
         for arg in self.conPass['args']:
             if arg.pointerDepth == 1:
-                out += ' ' * (indent * 4) + "self.mu.mem_map(0x1000 * %d, 0x1000)\n" % (arg.num)
+                out += ' ' * (indent * 4) + "self.mu.mem_map(0x1000 * %d, 0x1000)\n" % (arg.num + 1)
         return out
         
     # Unicorn API generation helpers
@@ -222,15 +216,15 @@ class genwrapper(object):
         # We'll often need a stack pointer
         if self.arch == 'x86':
             self.add_mmap(0x7ffff000)
-            out = ' ' * (indent * 4) + "self.mu.reg_write(UC_X86_REG_ESP, 0x7fffffff)\n"
+            out = ' ' * (indent * 4) + "self.mu.reg_write(UC_X86_REG_ESP, 0x7fffff00)\n"
         
         elif self.arch == 'x64':    # Same Stack mapping in case of 32-bit python/unicorn. May change later.
             self.add_mmap(0x7ffff000)
-            out = ' ' * (indent * 4) + "self.mu.reg_write(UC_X86_REG_RSP, 0x7fffffff)\n"
+            out = ' ' * (indent * 4) + "self.mu.reg_write(UC_X86_REG_RSP, 0x7fffff00)\n"
         
         elif self.arch == 'arm':    
             self.add_mmap(0x7ffff000)
-            out = ' ' * (indent * 4) + "self.mu.reg_write(UC_ARM_REG_SP, 0x7fffffff)\n"
+            out = ' ' * (indent * 4) + "self.mu.reg_write(UC_ARM_REG_SP, 0x7fffff00)\n"
         ## TODO Add support for other architectures supported by Unicorn and Binja 
         else:
             print "[ripr] Error, Unsupported Architecture"
@@ -288,7 +282,7 @@ class genwrapper(object):
         '''
         out = ''
         if self.arch in ['x86', 'x64']:
-            out += ' ' * (indent *4) + "self.mu.mem_write(0x7fffffff, '\\x01\\x00\\x00\\x00')\n"
+            out += ' ' * (indent *4) + "self.mu.mem_write(0x7fffff00, '\\x01\\x00\\x00\\x00')\n"
         elif self.arch == 'arm':
             out += ' ' * (indent *4) + "self.mu.reg_write(UC_ARM_REG_LR, 0x4)\n"
         else:
@@ -485,7 +479,7 @@ class genwrapper(object):
         out = '# Variables listed below should be filled in: \n'
         vs = self.conPass['unset_vars']
         for v in vs:
-            out += "# %s %s --> %s %s \n" % (v.var.type, v.var, v.var.source_type, v.reg)
+            out += "# %s %s --> %s \n" % (v.var.type, v.var, v.srcOperation)
         return out
 
     def generate_class(self):
