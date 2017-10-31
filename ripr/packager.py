@@ -91,6 +91,8 @@ class Packager(object):
             about the function to be emulated. It is a high-level encapsulation of multipe packaging and analysis methods.
         '''
         self.codeobj.name = self.ui.text_input_box("Enter Class Name")
+        if not self.codeobj.name:
+            return 
         # Get the bare minimum required information.
         self.minimal_package_function()
 
@@ -127,6 +129,8 @@ class Packager(object):
             self.ui.msgBox("Basic Block package list is empty!")
             return
         self.codeobj.name = self.ui.text_input_box("Enter Class Name")
+        if not self.codeobj.name:
+            return
         # Set starting address to first basic block selected
         self.codeobj.startaddr = bbChunks[0].keys()[0]
 
