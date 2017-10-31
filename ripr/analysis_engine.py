@@ -24,12 +24,12 @@ def get_engine(*args):
     '''
         Return an instance of the correct analysis engine class.
     '''
-    print args
+    if ("r2pipe" in sys.argv[0]):
+        return radare2_engine(r2pipe.open())
+    
     if ("binaryninja" in sys.modules.keys()):
         return bn_engine(args[0])
 
-    if ("r2pipe" in sys.modules.keys()):
-        return radare2_engine(r2pipe.open())
 
     raise ValueError, "No analysis engine found!"
     

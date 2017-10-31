@@ -154,7 +154,7 @@ class genwrapper(object):
         return any(lowaddr <= addr <= highaddr for (lowaddr, highaddr) in self.saved_ranges)
     
     # Wrappers for manipulating data structures
-    def add_mmap(self, addr, len=2 * 1024 * 1024):
+    def add_mmap(self, addr, len=0x4000):
         self.mmap[(addr & ~(self.pagesize - 1))] = len
 
     def add_data(self, data, addr):
@@ -188,6 +188,7 @@ class genwrapper(object):
     # Unicorn API generation helpers
     def generate_mmap(self, indent = 1):
         out = ''
+        
         for addr in self.mmap:
             out += ' ' * (indent * 4) + "self.mu.mem_map(%s,%s)\n" % (hex(addr), hex(self.mmap[addr]))
 
@@ -213,17 +214,16 @@ class genwrapper(object):
 
     
     def generate_stack_initialization(self, indent = 1):
-        # We'll often need a stack pointer
         if self.arch == 'x86':
-            self.add_mmap(0x7ffff000)
+            self.add_mmap(0x7ffff000, 1024*1024 * 2)
             out = ' ' * (indent * 4) + "self.mu.reg_write(UC_X86_REG_ESP, 0x7fffff00)\n"
         
-        elif self.arch == 'x64':    # Same Stack mapping in case of 32-bit python/unicorn. May change later.
-            self.add_mmap(0x7ffff000)
+        elif self.arch == 'x64':
+            self.add_mmap(0x7ffff000, 1024*1024 * 2)
             out = ' ' * (indent * 4) + "self.mu.reg_write(UC_X86_REG_RSP, 0x7fffff00)\n"
         
         elif self.arch == 'arm':    
-            self.add_mmap(0x7ffff000)
+            self.add_mmap(0x7ffff000, 1024*1024 * 2)
             out = ' ' * (indent * 4) + "self.mu.reg_write(UC_ARM_REG_SP, 0x7fffff00)\n"
         ## TODO Add support for other architectures supported by Unicorn and Binja 
         else:
@@ -383,6 +383,7 @@ class genwrapper(object):
     def generate_fill_in_args(self, indent=1):
         decl = ''
         args = self.conPass['args']
+        # TODO Determine calling convention/Platform
         if self.arch == 'x64':
             cc = x64callConv("linux", "x64")
             for i in range(0, len(args)):
@@ -392,7 +393,7 @@ class genwrapper(object):
             for i in range(0, len(args)):
                 decl +=  cc.gen_arg_number(args[i], indent)
         if self.arch == 'arm':
-            cc =armcallConv("linux", "x86")
+            cc =armcallConv("linux", "arm")
             for i in range(0, len(args)):
                 decl += cc.gen_arg_number(args[i], indent)
         return decl 

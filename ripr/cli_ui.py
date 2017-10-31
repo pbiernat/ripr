@@ -1,6 +1,7 @@
 
 # Instead of GUI, just prompt on the command line
 class cli_ui:
+    qtAvailable = False
     def yes_no_box(self, question):
         while True:
             response = raw_input("{} (Y/N)".format(question))
@@ -27,4 +28,7 @@ class cli_ui:
             selection = raw_input("({})?".format(", ".join(options))).strip()
             if selection in options:
                 return selection
+
+    def save_file(self, codeobj):
+        print codeobj.final
 

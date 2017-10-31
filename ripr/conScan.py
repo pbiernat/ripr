@@ -33,12 +33,16 @@ class riprArg(object):
         self.type = _type
         self.num = num
         self.pointerDepth = str(self.type).count("*")
+from analysis_engine import *
 
 class convenienceScanner(object):
     def __init__(self, engine):
         self.engine = engine
 
     def argIdent(self, addr, isFunc):
+        if (isinstance(self.engine, radare2_engine)):
+            print "Unsupported!"
+            return None
         fobj = self.engine.bv.get_functions_containing(addr)
         if len(fobj) > 1:
             return None
