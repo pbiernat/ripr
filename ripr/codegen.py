@@ -260,10 +260,12 @@ class genwrapper(object):
         out = ' ' * (indent * 4) + "try:\n"
         out +=  ' ' * ((indent + 1) * 4) + "self.mu.emu_start(startaddr, 0)\n"
         out += ' ' * (indent * 4) + "except Exception as e:\n"
+
         if self.isFunc:
             out += self.generate_return_guard(indent=indent+1)
         else:
-            out += ' ' * (indent + 1 ) * 4 + "pass\n"
+            out += self.generate_hook_lookup(indent=indent+1)
+
         return out
 
     def generate_start_unicorn_func(self, indent = 1):
