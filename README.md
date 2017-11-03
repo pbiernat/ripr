@@ -1,5 +1,4 @@
 ## ripr
----
 ripr is a tool that helps you rip out functionality from binary code and use it from python. It accomplishes this by pairing the [Unicorn-Engine](http://www.unicorn-engine.org/) with [Binary Ninja](https://binary.ninja). Currently, `x86`, `x64`, and `arm` are supported and work to a reasonable degree.
 
 ### Introduction
@@ -21,7 +20,7 @@ For some concrete examples (that are much easier to grok), check out the `sample
 The basic process is simple and looks like this:
 
 1. Clone the repo to your local machine
-2. Place the `ripr` folder into your Binary Ninja plugins directory
+2. Place the repo into your Binary Ninja plugins directory, or create a symlink pointing to it.
 3. (Optional) Install PyQt5 - The latest version of ripr does not require this.
 
 #### Windows
