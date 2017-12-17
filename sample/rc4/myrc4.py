@@ -40,7 +40,6 @@ class PRGA(object):
         while mem[0] != 0:
             arg+=1
             mem = self.mu.mem_read(arg, 1)
-        print "strlen(): %d" % (arg-arg0)
         self.mu.reg_write(UC_X86_REG_RAX, arg-arg0)
         return arg-arg0
 
@@ -56,9 +55,8 @@ class PRGA(object):
                 self.mu.reg_write(UC_X86_REG_RSP, self.mu.reg_read(UC_X86_REG_RSP) + 8)
                 self._start_unicorn(retAddr)
             else:
-                print "RIP: %08X" % self.mu.reg_read(UC_X86_REG_RIP)  # 0x4007dd: mov eax, dword [rbp-0x1c]
-                print "EAX: %08X" % (self.mu.reg_read(UC_X86_REG_EAX))
                 raise e
+
     def run(self, arg_0, arg_1):
         self.mu.reg_write(UC_X86_REG_RSP, 0x7fffff00)
         self.mu.mem_write(0x7fffff00, '\x01\x00\x00\x00')
@@ -99,7 +97,6 @@ class KSA(object):
         while mem[0] != 0:
             arg+=1
             mem = self.mu.mem_read(arg, 1)
-        print "strlen(): %d" % (arg-arg0)
         self.mu.reg_write(UC_X86_REG_RAX, arg-arg0)
         return arg-arg0
 
@@ -128,7 +125,6 @@ class KSA(object):
         self.mu.reg_write(UC_X86_REG_RSI, argAddr_1)
         self._start_unicorn(0x40065a)
         return self.mu.mem_read(argAddr_1,256)
-        # return self.mu.reg_read(UC_X86_REG_RAX)
 
 if len(sys.argv)<3:
     print "Usage: %s <key> <plaintext>" % (sys.argv[0])
@@ -140,6 +136,5 @@ plain=sys.argv[2]
 
 ksa=KSA()
 S=str(ksa.run(key,S))
-print repr(S)
 prga=PRGA()
 print str(prga.run(S,plain)).encode('hex')
