@@ -49,7 +49,6 @@ class PRGA(object):
             if self.mu.reg_read(UC_X86_REG_RIP) == 1:
                 return
             retAddr = struct.unpack("<q", self.mu.mem_read(self.mu.reg_read(UC_X86_REG_RSP), 8))[0]
-            print "%08x" % retAddr
             if retAddr in self.hookdict.keys():
                 getattr(self, self.hookdict[retAddr])()
                 self.mu.reg_write(UC_X86_REG_RSP, self.mu.reg_read(UC_X86_REG_RSP) + 8)
@@ -90,10 +89,22 @@ class KSA(object):
 
         self.mu.mem_write(0x400626L, self.code_0)
         self.mu.mem_write(0x40065aL, self.code_1)
+        self.mu.mem_write(0x4004d0L, "ff25410b2000".decode('hex'))
 
         self.hookdict = {4195958L: 'hook_strlen'}
+
     def hook_strlen(self):
-        pass
+        arg = self.mu.reg_read(UC_X86_REG_RDI)
+        arg0 = arg
+        mem = self.mu.mem_read(arg, 1)
+        while mem[0] != 0:
+            arg+=1
+            mem = self.mu.mem_read(arg, 1)
+        print "strlen(): %d" % (arg-arg0)
+        self.mu.reg_write(UC_X86_REG_RAX, arg-arg0)
+        return arg-arg0
+
+
     def _start_unicorn(self, startaddr):
         try:
             self.mu.emu_start(startaddr, 0)
