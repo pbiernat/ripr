@@ -1,12 +1,14 @@
-from unicorn import *
-from unicorn.x86_const import *
-
-import struct
+#!/usr/bin/env python
 
 from unicorn import *
 from unicorn.x86_const import *
 
 import struct
+import sys
+
+from unicorn import *
+from unicorn.x86_const import *
+
 class PRGA(object):
     def __init__(self):
         self.mu = Uc(UC_ARCH_X86, UC_MODE_64)
@@ -128,9 +130,13 @@ class KSA(object):
         return self.mu.mem_read(argAddr_1,256)
         # return self.mu.reg_read(UC_X86_REG_RAX)
 
-key="key"
+if len(sys.argv)<3:
+    print "Usage: %s <key> <plaintext>" % (sys.argv[0])
+    exit()
+
+key=sys.argv[1]
 S=" "*256
-plain="testing"
+plain=sys.argv[2]
 
 ksa=KSA()
 S=str(ksa.run(key,S))
