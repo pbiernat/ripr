@@ -57,7 +57,7 @@ class PRGA(object):
                 print "RIP: %08X" % self.mu.reg_read(UC_X86_REG_RIP)  # 0x4007dd: mov eax, dword [rbp-0x1c]
                 print "EAX: %08X" % (self.mu.reg_read(UC_X86_REG_EAX))
                 raise e
-    def run(self, arg_0, arg_1, arg_2):
+    def run(self, arg_0, arg_1):
         self.mu.reg_write(UC_X86_REG_RSP, 0x7fffff00)
         self.mu.mem_write(0x7fffff00, '\x01\x00\x00\x00')
         argAddr_0 = (1 * 0x1000)
@@ -67,13 +67,10 @@ class PRGA(object):
         self.mu.mem_write(argAddr_1, arg_1)
         self.mu.reg_write(UC_X86_REG_RSI, argAddr_1)
         argAddr_2 = (3 * 0x1000)
-        self.mu.mem_write(argAddr_2, arg_2)
+        self.mu.mem_write(argAddr_2, "\x00"*len(arg_1))
         self.mu.reg_write(UC_X86_REG_RDX, argAddr_2)
         self._start_unicorn(0x400733)
-        print repr(self.mu.mem_read(argAddr_2, 4))
-        return self.mu.reg_read(UC_X86_REG_RAX)
-
-
+        return self.mu.mem_read(argAddr_2, len(arg_1))
 
 class KSA(object):
     def __init__(self):
@@ -133,12 +130,10 @@ class KSA(object):
 
 key="key"
 S=" "*256
-cipher=""
-plain="test"
+plain="testing"
 
 ksa=KSA()
 S=str(ksa.run(key,S))
 print repr(S)
 prga=PRGA()
-prga.run(S,plain,cipher)
-print repr(cipher)
+print str(prga.run(S,plain)).encode('hex')
