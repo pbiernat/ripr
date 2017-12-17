@@ -23,9 +23,11 @@ class PRGA(object):
         self.mu.mem_map(0x1000 * 3, 0x1000)
         self.mu.mem_map(0x1000 * 4, 0x1000) # Missed mapping
 
-        self.mu.mem_write(0x601040L, self.data_0)
+        self.mu.mem_write(0x601040L, self.data_0) # obfuscator
         self.mu.mem_write(0x400626L, self.code_0) # swap()
         self.mu.mem_write(0x400733L, self.code_1)
+        self.mu.mem_write(0x400a54L, "4142434400".decode('hex'))
+        self.mu.mem_write(0x4004d0L, "ff25410b2000".decode('hex'))
 
         self.hookdict = {4196201L: 'hook_strlen'}
 
@@ -33,9 +35,10 @@ class PRGA(object):
         arg = self.mu.reg_read(UC_X86_REG_RDI)
         arg0 = arg
         mem = self.mu.mem_read(arg, 1)
-        while mem[0]!="\x00":
+        while mem[0] != 0:
             arg+=1
             mem = self.mu.mem_read(arg, 1)
+        print "strlen(): %d" % (arg-arg0)
         self.mu.reg_write(UC_X86_REG_RAX, arg-arg0)
         return arg-arg0
 
@@ -46,6 +49,7 @@ class PRGA(object):
             if self.mu.reg_read(UC_X86_REG_RIP) == 1:
                 return
             retAddr = struct.unpack("<q", self.mu.mem_read(self.mu.reg_read(UC_X86_REG_RSP), 8))[0]
+            print "%08x" % retAddr
             if retAddr in self.hookdict.keys():
                 getattr(self, self.hookdict[retAddr])()
                 self.mu.reg_write(UC_X86_REG_RSP, self.mu.reg_read(UC_X86_REG_RSP) + 8)
@@ -67,6 +71,7 @@ class PRGA(object):
         self.mu.mem_write(argAddr_2, arg_2)
         self.mu.reg_write(UC_X86_REG_RDX, argAddr_2)
         self._start_unicorn(0x400733)
+        print repr(self.mu.mem_read(argAddr_2, 4))
         return self.mu.reg_read(UC_X86_REG_RAX)
 
 
