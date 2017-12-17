@@ -100,15 +100,16 @@ class KSA(object):
         self.mu.mem_write(argAddr_1, arg_1)
         self.mu.reg_write(UC_X86_REG_RSI, argAddr_1)
         self._start_unicorn(0x40065a)
-        return self.mu.reg_read(UC_X86_REG_RAX)
+        return self.mu.mem_read(argAddr_1,256)
+        # return self.mu.reg_read(UC_X86_REG_RAX)
 
 key="key"
-S=""
+S=" "*256
 cipher=""
 plain="test"
 
 ksa=KSA()
-ksa.run(key,S)
+S=str(ksa.run(key,S))
 print repr(S)
 prga=PRGA()
 prga.run(S,plain,cipher)
