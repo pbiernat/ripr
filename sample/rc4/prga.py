@@ -21,14 +21,24 @@ class PRGA(object):
         self.mu.mem_map(0x1000 * 1, 0x1000)
         self.mu.mem_map(0x1000 * 2, 0x1000)
         self.mu.mem_map(0x1000 * 3, 0x1000)
+        self.mu.mem_map(0x1000 * 4, 0x1000) # Missed mapping
 
         self.mu.mem_write(0x601040L, self.data_0)
-        self.mu.mem_write(0x400626L, self.code_0)
+        self.mu.mem_write(0x400626L, self.code_0) # swap()
         self.mu.mem_write(0x400733L, self.code_1)
 
         self.hookdict = {4196201L: 'hook_strlen'}
+
     def hook_strlen(self):
-        pass
+        arg = self.mu.reg_read(UC_X86_REG_RDI)
+        arg0 = arg
+        mem = self.mu.mem_read(arg, 1)
+        while mem[0]!="\x00":
+            arg+=1
+            mem = self.mu.mem_read(arg, 1)
+        self.mu.reg_write(UC_X86_REG_RAX, arg-arg0)
+        return arg-arg0
+
     def _start_unicorn(self, startaddr):
         try:
             self.mu.emu_start(startaddr, 0)
@@ -41,6 +51,8 @@ class PRGA(object):
                 self.mu.reg_write(UC_X86_REG_RSP, self.mu.reg_read(UC_X86_REG_RSP) + 8)
                 self._start_unicorn(retAddr)
             else:
+                print "RIP: %08X" % self.mu.reg_read(UC_X86_REG_RIP)  # 0x4007dd: mov eax, dword [rbp-0x1c]
+                print "EAX: %08X" % (self.mu.reg_read(UC_X86_REG_EAX))
                 raise e
     def run(self, arg_0, arg_1, arg_2):
         self.mu.reg_write(UC_X86_REG_RSP, 0x7fffff00)
