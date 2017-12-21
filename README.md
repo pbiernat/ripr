@@ -107,7 +107,7 @@ Any code you write within these functions will be called in lieu of the actual i
 
 ```python
 def hook_puts(self):
-    arg = self.mu.reg_read(UC_X86_REG_RDI)
+    addr = self.mu.reg_read(UC_X86_REG_RDI)
     mem = self.mu.mem_read(addr, 0x200)
     print "%s" % (mem.split("\x00")[0])
 ```
