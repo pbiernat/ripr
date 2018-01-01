@@ -450,7 +450,8 @@ class genwrapper(object):
             The default python hook for imported calls should do nothing.
         '''
         out = ' ' * (indent * 4) + """def hook_%s(self):
-        pass\n""" % name
+        print "[!] %s hook not implemented!"
+        pass\n""" % (name, name)
         return out
         
     def _build_impCall_hook_dict(self, indent=1):
