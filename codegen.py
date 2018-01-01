@@ -17,6 +17,9 @@ class callConv(object):
     def gen_arg_number(self, argno):
         pass
 
+    def genPointer(self, arg, regs, indent):
+        pass
+
 class x64callConv(callConv):
 # TODO Stack based arguments 
     def __init__(self, name, arch):
