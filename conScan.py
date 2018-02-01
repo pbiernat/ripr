@@ -1,4 +1,13 @@
-from binaryninja import *
+# Try to import stuff.
+try:
+    from binaryninja import *
+except:
+    print "[!!] Not running in Binary Ninja"
+
+try:
+    import r2pipe
+except:
+    print "[!!] Not running in Radare2"
 
 class ilVar(object):
     def __hash__(self):
