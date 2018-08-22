@@ -17,15 +17,15 @@ class arm_test(object):
 
         self.hookdict = {66688L: 'hook_puts', 66696L: 'hook_puts', 66704L: 'hook_malloc'}
     def hook_puts(self):
-        print "===========In Puts=========="
+        print ("===========In Puts==========")
         arg = self.mu.reg_read(UC_ARM_REG_R0)
         mem = self.mu.mem_read(arg, 0x200)
-        print "Puts would have Printed: %s" % (mem.split("\x00")[0])
-        print "===========Leaving Puts=========="
+        print ("Puts would have Printed: %s" % (mem.split("\x00")[0]))
+        print ("===========Leaving Puts==========")
 
     def hook_malloc(self):
-        print "===========In Malloc=========="
-        print "===========Leaving Malloc==========="
+        print ("===========In Malloc==========")
+        print ("===========Leaving Malloc===========")
     
     def _start_unicorn(self, startaddr):
         try:
@@ -46,4 +46,4 @@ class arm_test(object):
         return self.mu.reg_read(UC_ARM_REG_R0)
 
 x = arm_test()
-print x.run()
+print (x.run())

@@ -7,17 +7,17 @@
 try:
     from binaryninja import *
 except:
-    print "[!!] Not running in Binary Ninja"
+    print ("[!!] Not running in Binary Ninja")
 
 try:
     import r2pipe
 except:
-    print "[!!] Not running in Radare2"
+    print ("[!!] Not running in Radare2")
 
 import json
 import re
 import sys
-import codegen
+from .codegen import *
 from binascii import unhexlify
 
 def get_engine(*args):
@@ -31,7 +31,7 @@ def get_engine(*args):
         return bn_engine(args[0])
 
 
-    raise ValueError, "No analysis engine found!"
+    raise (ValueError, "No analysis engine found!")
     
 
 
@@ -160,7 +160,7 @@ class bn_engine(aengine):
             These can be different from Binary Ninja names, so they are explicitly mapped
             into the ripr names, even if they are the same in some cases.
         '''
-        print self.bv.arch.name
+        print (self.bv.arch.name)
         if (self.bv.arch.name == 'x86'):
             return 'x86'
         elif (self.bv.arch.name == 'x86_64'):
@@ -171,7 +171,7 @@ class bn_engine(aengine):
     def mark_gathered_basic_block(self, address):
         fobj = self.bv.get_functions_containing(address)[0]
         if (fobj == None):
-            print "FOBJ IS NONE"
+            print ("FOBJ IS NONE")
         bb = fobj.get_basic_block_at(address)
         bb.highlight = HighlightStandardColor.BlackHighlightColor
 
@@ -187,24 +187,24 @@ class bn_engine(aengine):
     def get_basic_block_bytes(self, address):
         bb = self.bv.get_basic_blocks_at(address)
         if len(bb) != 1:
-            print "[ripr] Address belongs to more than one basic block!"
+            print ("[ripr] Address belongs to more than one basic block!")
 
         bb = bb[0]
-        return {bb.start: codegen.codeSlice(self.read_bytes(bb.start, bb.end-bb.start), bb.start)}
+        return {bb.start: codeSlice(self.read_bytes(bb.start, bb.end-bb.start), bb.start)}
 
     def get_function_bytes(self, address=None, name=None):
         ''' 
             Binary Ninja does not seem to assume Functions are contiguous; rather they 
             are treated as a collection of basic blocks. 
         '''
-        print "[ripr] Inside get_function_bytes()"
+        print ("[ripr] Inside get_function_bytes()")
         if (address != None):
             fobj = self.bv.get_function_at(address)
         elif (name != None):
-            print "[ripr] TODO"
+            print ("[ripr] TODO")
             return
         else:
-            print "[ripr] No arguments supplied to get_function_bytes"
+            print ("[ripr] No arguments supplied to get_function_bytes")
             return None
         # Sort the basic blocks in ascending order 
         bblist = sorted(fobj.basic_blocks, key=lambda x: x.start)
@@ -218,10 +218,10 @@ class bn_engine(aengine):
                 clist.append([bb])
         # Print out the list if the function is not contiguous
         if (len(clist) > 1):
-            print clist
+            print (clist)
 
         # Create a return list in the expected format from the contiguous units.
-        retdir = {unit[0].start : codegen.codeSlice(self.read_bytes(unit[0].start, unit[-1].start - unit[0].start + unit[-1].length), unit[0].start) for unit in clist}
+        retdir = {unit[0].start : codeSlice(self.read_bytes(unit[0].start, unit[-1].start - unit[0].start + unit[-1].length), unit[0].start) for unit in clist}
         return retdir
 
     def get_page_bytes(self, address):
@@ -264,7 +264,7 @@ class bn_engine(aengine):
     def find_llil_block_from_addr(self, address):
         fobj = self.bv.get_functions_containing(address)
         if len(fobj) > 1:
-            print "[ripr] Multiple Functions contain this address!!"
+            print ("[ripr] Multiple Functions contain this address!!")
             return None
         fobj = fobj[0]
         bbindex = fobj.get_basic_block_at(address).index
@@ -273,7 +273,7 @@ class bn_engine(aengine):
     def find_mlil_block_from_addr(self, address):
         fobj = self.bv.get_functions_containing(address)
         if len(fobj) > 1:
-            print "[ripr] Multiple Functions contain this address!!"
+            print ("[ripr] Multiple Functions contain this address!!")
             return None
         fobj = fobj[0]
         bbindex = fobj.get_basic_block_at(address).index
@@ -381,7 +381,7 @@ class bn_engine(aengine):
         elif color == "orange":
             bn_color = HighlightStandardColor.OrangeHighlightColor
         else:
-            raise ValueError, "Unsupported color"
+            raise (ValueError, "Unsupported color")
         fobj.set_user_instr_highlight(instrAddr, bn_color)
 
     def add_comment(self, func_addr, instrAddr, comment):
@@ -442,29 +442,29 @@ class radare2_engine(aengine):
         elif arch == "x86" and bits == 64:
             return 'x64'
         else:
-            raise NotImplementedError, "Only tested witn x86 & x86_64"
+            raise (NotImplementedError, "Only tested witn x86 & x86_64")
 
     def get_function_bytes(self, address=None, name=None):
         if (address != None):
             funcInfo = self.r2.cmd("afij {}".format(hex(address)))
         elif (name != None):
-            print "[ripr] TODO"
+            print ("[ripr] TODO")
             return
         else:
-            print "[ripr] No arguments supplied to get_function_bytes"
+            print ("[ripr] No arguments supplied to get_function_bytes")
             return None
 
         if funcInfo.strip() == "":
-            raise ValueError, "Function not found at {}".format(address)
+            raise (ValueError, "Function not found at {}".format(address))
         funcInfo = json.loads(funcInfo, strict=False)
 
         if len(funcInfo) == 0:
-            raise ValueError, "Function not found at {}".format(address)
-        print funcInfo
+            raise (ValueError, "Function not found at {}".format(address))
+        print (funcInfo)
         offset = funcInfo[0]["offset"]
         size = funcInfo[0]["size"]
         bytes = self.read_bytes(offset, size)
-        retdir = {offset: codegen.codeSlice(bytes, offset)}
+        retdir = {offset: codeSlice(bytes, offset)}
         return retdir
 
     def get_page_bytes(self, address):
@@ -560,7 +560,7 @@ class radare2_engine(aengine):
     def add_comment(self, func_addr, instrAddr, comment):
         if not re.compile("^[a-z0-9 !\\-\\_]+$", re.IGNORECASE).match(comment):
             # Don't send arbitrary contents to radare pipe
-            print "Ignoring malformed comment: {}".format(comment)
+            print ("Ignoring malformed comment: {}".format(comment))
         else:
             self.r2.cmd("CC [ripr] {} @{}".format(comment, hex(instrAddr)))
 

@@ -3,12 +3,12 @@
 '''
 import sys
 if (sys.platform == 'win32'):
-    sys.path.append("C:\\Python27\\lib\\site-packages")
+    sys.path.append("C:\\Python37\\lib\\site-packages")
 try:
     from PyQt5 import QtWidgets, QtGui, QtCore
     from PyQt5.QtCore import Qt
-    from defunct.widgets import BinjaWidget
-    import defunct.widgets
+    from .defunct.widgets import BinjaWidget
+    from .defunct.widgets import *
     qtAvailable = True
 except:
     qtAvailable = False
@@ -42,7 +42,7 @@ try:
             # Find the Class name from the index
             name = self.item(item.row(), item.column()).text()
             # Open the Editor
-            print "Selected Codeobj: %s" % name
+            print ("Selected Codeobj: %s" % name)
             return self.emuchunks[name]
     
         def contextMenuEvent(self, event):
@@ -183,7 +183,10 @@ except:
             if choice == enums.MessageBoxButtonResult.YesButton:
                 return True
             return False
-    
+        
+        def msgBox(self, msg):
+            interaction.show_message_box("Binary Ninja - ripr", msg, enums.MessageBoxButtonSet.OKButtonSet)
+
         def text_input_box(self,msg):
             text = interaction.get_text_line_input(msg, "Binary Ninja - ripr")
             return text

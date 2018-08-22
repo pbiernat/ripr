@@ -12,7 +12,7 @@ args = parser.parse_args()
 if args.seed != None:
     random.seed(args.seed)
 
-print "Running %d testcases..." % (args.num)
+print ("Running %d testcases..." % (args.num))
 
 for i in xrange(0,args.num):
     key_len = random.randint(1,16)
@@ -22,7 +22,7 @@ for i in xrange(0,args.num):
     ripr = subprocess.check_output(["python", "myrc4.py", key, plain]).strip().upper()
     orig = subprocess.check_output(["./a.out", key, plain]).strip().upper()
     if ripr != orig:
-        print "FAIL:\n'%s' vs. '%s'" % (orig, ripr)
-        print "Key: %s\nPlain:\n'%s'" % (key, plain)
+        print ("FAIL:\n'%s' vs. '%s'" % (orig, ripr))
+        print ("Key: %s\nPlain:\n'%s'" % (key, plain))
         exit()
 print "Everything is OK!"

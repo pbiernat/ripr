@@ -3,11 +3,16 @@ CodeGen
 '''
 import sys
 import os
+import binascii
+
+python2=False
+if sys.version_info[0] < 3:
+   python2=True
 
 try:
     from binaryninja import *
 except:
-    print "[+] Not running in BinaryNinja"
+    print ("[+] Not running in BinaryNinja")
 
 class callConv(object):
     def __init__(self, name, arch):
@@ -25,7 +30,7 @@ class x64callConv(callConv):
         self.platform = ''
 
     def gen_arg_number(self, argno, indent=1):
-        print "X64"
+        print ("X64")
         if self.platform == "win":
             return self.msft(argno, indent)
         return self.systemV(argno, indent)
@@ -83,7 +88,7 @@ class armcallConv(callConv):
 
     def gen_arg_number(self, arg, indent):
         regs = ["UC_ARM_REG_R0", "UC_ARM_REG_R1", "UC_ARM_REG_R2", "UC_ARM_REG_R3"]
-        if argno < len(regs):
+        if arg.num < len(regs):
             if arg.pointerDepth == 0 or arg.pointerDepth > 1:
                 return ' ' * (indent *4 ) + "self.mu.reg_write(%s, arg_%x)\n" % (regs[arg.num], arg.num)
             return self.genPointer(arg, regs, indent)
@@ -159,14 +164,14 @@ class genwrapper(object):
 
     def add_data(self, data, addr):
         if (self.data_saved(addr)):
-            print "[Warning] Trying to map data twice!"
+            print ("[Warning] Trying to map data twice!")
             return
         self.data.append((addr, data))
         self.saved_ranges.append((addr, addr + len(data)))
 
     def add_code(self, cSlice):
         if (self.data_saved(cSlice.address)):
-            print "[Warning] Trying to map data twice"
+            print ("[Warning] Trying to map data twice")
         self.code.append(cSlice)
         self.saved_ranges.append((cSlice.address, cSlice.address + len(cSlice.code_bytes)))
 
@@ -199,16 +204,26 @@ class genwrapper(object):
         return out
     
     def generate_data_vars(self, indent = 1):
+        global python2
         out = ''
         for i in range(0, len(self.data)):
-            out += ' ' * (indent * 4) + "self.data_%s = '%s'.decode('hex') \n" % (str(i), self.data[i][1].encode('hex'))
+            if python2==True:
+                cc=binascii.hexlify(self.data[i][1])
+            else:
+                cc=binascii.hexlify(self.data[i][1]).decode('utf-8')
+            out += ' ' * (indent * 4) + "self.data_%s = binascii.unhexlify('%s') \n" % (str(i), cc)
         return out
 
     def generate_code_vars(self, indent = 1):
+        global python2
         out = ''
         i = 0
         for cSlice in self.code:
-            out += ' ' * (indent * 4) + "self.code_%s = '%s'.decode('hex') \n" % (str(i), cSlice.code_bytes.encode('hex'))
+            if python2==True:
+                cc=binascii.hexlify(cSlice.code_bytes)
+            else:
+                cc=binascii.hexlify(cSlice.code_bytes).decode('utf-8')
+            out += ' ' * (indent * 4) + "self.code_%s = binascii.unhexlify('%s') \n" % (str(i), cc)
             i += 1
         return out
 
@@ -227,7 +242,7 @@ class genwrapper(object):
             out = ' ' * (indent * 4) + "self.mu.reg_write(UC_ARM_REG_SP, 0x7fffff00)\n"
         ## TODO Add support for other architectures supported by Unicorn and Binja 
         else:
-            print "[ripr] Error, Unsupported Architecture"
+            print ("[ripr] Error, Unsupported Architecture")
         return out
 
     
@@ -288,7 +303,7 @@ class genwrapper(object):
         elif self.arch == 'arm':
             out += ' ' * (indent *4) + "self.mu.reg_write(UC_ARM_REG_LR, 0x4)\n"
         else:
-            print "Unsupported Arch"
+            print ("Unsupported Arch")
         return out
 
     def generate_restore_exec(self, indent=1):
@@ -307,7 +322,7 @@ class genwrapper(object):
             out += ' ' * (indent * 4) + "self._start_unicorn(retAddr)\n"
             pass
         else:
-            print "Unsupported Arch"
+            print ("Unsupported Arch")
 
         return out
 
@@ -320,7 +335,7 @@ class genwrapper(object):
             retAddr = ' ' * (indent * 4) + "retAddr = self.mu.reg_read(UC_ARM_REG_LR)\n"
 
         else:
-            print "Unsupported Architecture"
+            print ("Unsupported Architecture")
             retAddr = ' ' * (indent * 4) + "retAddr = 0\n"
             
         chk_hookdict = ' '  * (indent * 4) + "if retAddr in self.hookdict.keys():\n"
@@ -343,7 +358,7 @@ class genwrapper(object):
         elif (self.arch == 'arm'):
             out += ' ' * (indent * 4) + "if self.mu.reg_read(UC_ARM_REG_PC) == 4:\n"
         else:
-            print "[ripr] Unsupported Arch..."
+            print ("[ripr] Unsupported Arch...")
         
         # Return if PC has landed on the marker value
         out += ' ' * ((indent + 1) * 4) + "return\n"
@@ -371,7 +386,7 @@ class genwrapper(object):
         elif self.arch == 'arm':
             return ' ' * (indent * 4) + "return self.mu.reg_read(UC_ARM_REG_R0)\n"
         else:
-            print '[ripr] Unsupported Arch'
+            print ('[ripr] Unsupported Arch')
 
     def generate_run_with_args(self, indent=1):
         decl = ' ' * 4 + "def run(self"
@@ -486,6 +501,7 @@ class genwrapper(object):
         return out
 
     def generate_class(self):
+        global python2
         '''
             Wrap this chunk of code into a python class
         '''
@@ -495,8 +511,12 @@ class genwrapper(object):
         if "unset_vars" in self.conPass.keys():
             comments += self.generate_unset_var_comments()
         # Static Strings
-        defn = "class %s(object):\n" % (self.name)
-        imp = "from unicorn import *\n" + self.imp_consts() + "import struct\n"
+        if python2:
+            name=self.name
+        else:
+            name=self.name.decode('utf-8')
+        defn = "class %s(object):\n" % name
+        imp = "from unicorn import *\n" + self.imp_consts() + "import struct\nimport binascii\n"
         init = ' ' * 4 + "def __init__(self):\n"
         run = ' ' * 4 + "def run(self):\n"
         
@@ -522,6 +542,14 @@ class genwrapper(object):
         writes = self.generate_mem_writes(indent = 2) + "\n"
 
         start_unicorn = self.generate_start_unicorn_func()
-
+        
+        argf=""
+        for i in range(0,len(self.conPass['args'])):
+            argf+="0,"
+        argf=argf[:-1]
+        
         # Put the pieces together
-        self.final = comments + imp + defn + init + emuinit + codevars + datavars + mmaps + writes + hookdict + hooks + start_unicorn + runfns +"\n"
+        self.final = comments + imp + defn + init + emuinit + codevars + datavars + mmaps + writes \
+                     + hookdict + hooks + start_unicorn + runfns + "\n" + ("x = %s()" % name) \
+                     +"\n"+"print (x.run("+argf+"))\n"
+

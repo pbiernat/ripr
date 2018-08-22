@@ -18,15 +18,15 @@ class x64_test(object):
         self.hookdict = {4195721L: 'hook_puts', 4195731L: 'hook_malloc', 4195711L: 'hook_puts'}
     # Do whatever we want in hooked functions
     def hook_puts(self):
-        print "===========In Puts=========="
+        print ("===========In Puts==========")
         arg = self.mu.reg_read(UC_X86_REG_RDI)
         mem = self.mu.mem_read(arg, 0x200)
-        print "Puts would have Printed: %s" % (mem.split("\x00")[0])
-        print "===========Leaving Puts=========="
+        print ("Puts would have Printed: %s" % (mem.split("\x00")[0]))
+        print ("===========Leaving Puts==========")
 
     def hook_malloc(self):
-        print "===========In Malloc=========="
-        print "===========Leaving Malloc==========="
+        print ("===========In Malloc==========")
+        print ("===========Leaving Malloc===========")
     
 
     def _start_unicorn(self, startaddr):
@@ -49,4 +49,4 @@ class x64_test(object):
         return self.mu.reg_read(UC_X86_REG_RAX)
 
 x = x64_test()
-print x.run()
+print (x.run())
