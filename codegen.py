@@ -22,13 +22,24 @@ class callConv(object):
     def gen_arg_number(self, argno):
         pass
 
+    def genPointer(self, arg, regs, indent):
+        pass
+    
+    def dumpContext(self, indent):
+        pass
+
 class x64callConv(callConv):
 # TODO Stack based arguments 
     def __init__(self, name, arch):
         self.name = name
         self.arch = arch
         self.platform = ''
-
+        self.regs = ["UC_X86_REG_RAX", "UC_X86_REG_RBP", "UC_X86_REG_RBX", "UC_X86_REG_RCX",\
+                    "UC_X86_REG_RDI", "UC_X86_REG_RDX", "UC_X86_REG_RSI", "UC_X86_REG_RSP",\
+                    "UC_X86_REG_RIP", "UC_X86_REG_R8", "UC_X86_REG_R9", "UC_X86_REG_R10",\
+                    "UC_X86_REG_R11", "UC_X86_REG_R12", "UC_X86_REG_R13", "UC_X86_REG_R14",\
+                    "UC_X86_REG_R15"]
+                    
     def gen_arg_number(self, argno, indent=1):
         print ("X64")
         if self.platform == "win":
@@ -57,10 +68,19 @@ class x64callConv(callConv):
                 return ' ' * (indent*4) + "self.mu.reg_write(%s, arg_%x)\n" % (regs[arg.num], arg.num)
             return self.genPointer(arg, regs, indent)
 
+    def dumpContext(self, indent):
+        ret = ' ' * (indent * 4) + ("print ('[!] Exception occured - Emulator state (x64):')\n")
+        for r in self.regs:
+            ret += ' ' * (indent * 4) + ("print (\"%s : %%016X\" %% (self.mu.reg_read(%s)))\n" % (r,r))
+        return ret
+
 class x86callConv(callConv):
     def __init__(self, name, arch):
         self.name = name
         self.arch = arch
+        self.regs = ["UC_X86_REG_EAX", "UC_X86_REG_EBP", "UC_X86_REG_EBX", "UC_X86_REG_ECX",\
+                    "UC_X86_REG_EDI", "UC_X86_REG_EDX", "UC_X86_REG_ESI", "UC_X86_REG_ESP",\
+                    "UC_X86_REG_EIP"]
 
     def genPointer(self, arg, indent):
         ret = ' ' * (indent * 4) + "argAddr_%x = (%d * 0x1000)\n" % (arg.num, arg.num + 1)
@@ -75,10 +95,20 @@ class x86callConv(callConv):
             return ' ' * (indent * 4) + "self.mu.mem_write(self.mu.reg_read(UC_X86_REG_ESP) + %d, struct.pack('<i', arg_%x))\n" % ( (arg.num * 4) + 4, arg.num)
         return self.genPointer(arg, indent)
 
+    def dumpContext(self, indent):
+        ret = ' ' * (indent * 4) + ("print ('[!] Exception occured - Emulator state (x86):')\n")
+        for r in self.regs:
+            ret += ' ' * (indent * 4) + ("print (\"%s : %%08X\" %% (self.mu.reg_read(%s)))\n" % (r,r))
+        return ret
+
 class armcallConv(callConv):
     def __init__(self, name, arch):
         self.name = name
         self.arch = arch
+        self.regs = ["UC_ARM_REG_R0", "UC_ARM_REG_R1", "UC_ARM_REG_R2", "UC_ARM_REG_R3",\
+                    "UC_ARM_REG_R4", "UC_ARM_REG_R5", "UC_ARM_REG_R6", "UC_ARM_REG_R7",\
+                    "UC_ARM_REG_R8", "UC_ARM_REG_R9", "UC_ARM_REG_R10", "UC_ARM_REG_R11",\
+                    "UC_ARM_REG_R12", "UC_ARM_REG_R13", "UC_ARM_REG_R14", "UC_ARM_REG_R15"]
 
     def genPointer(self, arg, regs, indent):
         ret = ' ' * (indent * 4) + "argAddr_%x = (%d * 0x1000)\n" % (arg.num, arg.num+1)
@@ -92,7 +122,12 @@ class armcallConv(callConv):
             if arg.pointerDepth == 0 or arg.pointerDepth > 1:
                 return ' ' * (indent *4 ) + "self.mu.reg_write(%s, arg_%x)\n" % (regs[arg.num], arg.num)
             return self.genPointer(arg, regs, indent)
-            
+
+    def dumpContext(self, indent):
+        ret = ' ' * (indent * 4) + ("print ('[!] Exception occured - Emulator state (arm):')\n")
+        for r in self.regs:
+            ret += ' ' * (indent * 4) + ("print (\"%s : %%X\" %% (self.mu.reg_read(%s)))\n" % (r,r))
+        return ret            
 
 class codeSlice(object):
     '''
@@ -155,6 +190,15 @@ class genwrapper(object):
 
         self.isFunc = isFunc
         
+    def setArch(self,a):
+        self.arch=a
+        if self.arch == 'x64':
+            self.callConv = x64callConv("linux", "x64")
+        if self.arch == 'x86':
+            self.callConv = x86callConv("linux", "x86")
+        if self.arch == 'arm':
+            self.callConv =armcallConv("linux", "arm")
+
     def data_saved(self, addr): 
         return any(lowaddr <= addr <= highaddr for (lowaddr, highaddr) in self.saved_ranges)
     
@@ -369,6 +413,8 @@ class genwrapper(object):
 
         # Raise original exception if PC is not equal to the appropriate marker value or imported call marker
         out += ' ' * (indent * 4) + "else:\n"
+        if self.callConv is not None:
+            out += self.callConv.dumpContext(indent+1)
         out += ' ' * ((indent + 1) * 4) + "raise e"
 
         return out + "\n"
@@ -465,7 +511,8 @@ class genwrapper(object):
             The default python hook for imported calls should do nothing.
         '''
         out = ' ' * (indent * 4) + """def hook_%s(self):
-        pass\n""" % name
+        print ("[!] %s hook not implemented!")
+        pass\n""" % (name, name)
         return out
         
     def _build_impCall_hook_dict(self, indent=1):

@@ -26,7 +26,7 @@ class Packager(object):
         
         self.codeobj = genwrapper('', isFunc)
         self.arch = self.engine.get_arch()
-        self.codeobj.arch = self.arch
+        self.codeobj.setArch(self.arch)
 
         self.impCallStrategy = None
         self.dataStrategy = None
