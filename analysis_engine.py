@@ -54,6 +54,7 @@ class aengine(object):
             'x86'
             'x64'
             'arm'
+            'arm64'
             'mips'
         '''
         pass
@@ -167,6 +168,8 @@ class bn_engine(aengine):
             return 'x64'
         elif (self.bv.arch.name == 'armv7'):
             return 'arm'
+        elif (self.bv.arch.name == 'aarch64'):
+            return 'arm64'
 
     def mark_gathered_basic_block(self, address):
         fobj = self.bv.get_functions_containing(address)[0]
@@ -442,7 +445,13 @@ class radare2_engine(aengine):
         elif arch == "x86" and bits == 64:
             return 'x64'
         else:
-            raise (NotImplementedError, "Only tested witn x86 & x86_64")
+            raise (NotImplementedError, "Only tested with x86 & x86_64")
+        '''
+        elif arch == "arm" and bits == 32:
+            return 'arm'
+        elif arch == "arm" and bits == 64:
+            return 'arm64'
+        '''
 
     def get_function_bytes(self, address=None, name=None):
         if (address != None):

@@ -3,7 +3,10 @@
 '''
 import sys
 if (sys.platform == 'win32'):
-    sys.path.append("C:\\Python37\\lib\\site-packages")
+    if sys.version_info[0] >= 3:
+        sys.path.append("C:\\Python37\\lib\\site-packages\\PyQt5")
+    else:
+        sys.path.append("C:\\Python27\\lib\\site-packages\\PyQt5")
 try:
     from PyQt5 import QtWidgets, QtGui, QtCore
     from PyQt5.QtCore import Qt

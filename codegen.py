@@ -129,6 +129,38 @@ class armcallConv(callConv):
             ret += ' ' * (indent * 4) + ("print (\"%s : %%X\" %% (self.mu.reg_read(%s)))\n" % (r,r))
         return ret            
 
+class arm64callConv(callConv):
+    def __init__(self, name, arch):
+        self.name = name
+        self.arch = arch
+        self.regs = ["UC_ARM64_REG_X0", "UC_ARM64_REG_X1", "UC_ARM64_REG_X2", "UC_ARM64_REG_X3",\
+                    "UC_ARM64_REG_X4", "UC_ARM64_REG_X5", "UC_ARM64_REG_X6", "UC_ARM64_REG_X7",\
+                    "UC_ARM64_REG_X8", "UC_ARM64_REG_X9", "UC_ARM64_REG_X10", "UC_ARM64_REG_X11",\
+                    "UC_ARM64_REG_X12", "UC_ARM64_REG_X13", "UC_ARM64_REG_X14", "UC_ARM64_REG_X15",\
+                    "UC_ARM64_REG_X16", "UC_ARM64_REG_X17", "UC_ARM64_REG_X18", "UC_ARM64_REG_X19",\
+                    "UC_ARM64_REG_X20", "UC_ARM64_REG_X21", "UC_ARM64_REG_X22", "UC_ARM64_REG_X23",\
+                    "UC_ARM64_REG_X24", "UC_ARM64_REG_X25", "UC_ARM64_REG_X26", "UC_ARM64_REG_X27",\
+                    "UC_ARM64_REG_X28", "UC_ARM64_REG_X29", "UC_ARM64_REG_X30"]
+
+    def genPointer(self, arg, regs, indent):
+        ret = ' ' * (indent * 4) + "argAddr_%x = (%d * 0x1000)\n" % (arg.num, arg.num+1)
+        ret += ' ' * (indent * 4) + "self.mu.mem_write(argAddr_%x, arg_%x)\n" % (arg.num, arg.num)
+        ret += ' ' * (indent * 4) + "self.mu.reg_write(%s, argAddr_%x)\n" % (regs[arg.num], arg.num)
+        return ret
+
+    def gen_arg_number(self, arg, indent):
+        regs = ["UC_ARM64_REG_X0", "UC_ARM64_REG_X1", "UC_ARM64_REG_X2", "UC_ARM64_REG_X3"]
+        if arg.num < len(regs):
+            if arg.pointerDepth == 0 or arg.pointerDepth > 1:
+                return ' ' * (indent *4 ) + "self.mu.reg_write(%s, arg_%x)\n" % (regs[arg.num], arg.num)
+            return self.genPointer(arg, regs, indent)
+
+    def dumpContext(self, indent):
+        ret = ' ' * (indent * 4) + ("print ('[!] Exception occured - Emulator state (arm64):')\n")
+        for r in self.regs:
+            ret += ' ' * (indent * 4) + ("print (\"%s : %%X\" %% (self.mu.reg_read(%s)))\n" % (r,r))
+        return ret
+
 class codeSlice(object):
     '''
         A container class for a slice of code.
@@ -194,10 +226,12 @@ class genwrapper(object):
         self.arch=a
         if self.arch == 'x64':
             self.callConv = x64callConv("linux", "x64")
-        if self.arch == 'x86':
+        elif self.arch == 'x86':
             self.callConv = x86callConv("linux", "x86")
-        if self.arch == 'arm':
+        elif self.arch == 'arm':
             self.callConv =armcallConv("linux", "arm")
+        elif self.arch == 'arm64':
+            self.callConv =armcallConv("linux", "arm64")
 
     def data_saved(self, addr): 
         return any(lowaddr <= addr <= highaddr for (lowaddr, highaddr) in self.saved_ranges)
@@ -284,6 +318,11 @@ class genwrapper(object):
         elif self.arch == 'arm':    
             self.add_mmap(0x7ffff000, 1024*1024 * 2)
             out = ' ' * (indent * 4) + "self.mu.reg_write(UC_ARM_REG_SP, 0x7fffff00)\n"
+            
+        elif self.arch == 'arm64':    
+            self.add_mmap(0x7ffff000, 1024*1024 * 2)
+            out = ' ' * (indent * 4) + "self.mu.reg_write(UC_ARM64_REG_SP, 0x7fffff00)\n"
+            
         ## TODO Add support for other architectures supported by Unicorn and Binja 
         else:
             print ("[ripr] Error, Unsupported Architecture")
@@ -333,7 +372,7 @@ class genwrapper(object):
         '''
         decl = ' ' * (indent * 4) + 'def _start_unicorn(self, startaddr):\n' 
         body = self.generate_emustart(indent=2)
-        return decl+body 
+        return decl+body+"\n"
 
     def generate_return_guard_marker(self, indent=1):
         '''
@@ -346,6 +385,8 @@ class genwrapper(object):
             out += ' ' * (indent *4) + "self.mu.mem_write(0x7fffff00, '\\x01\\x00\\x00\\x00')\n"
         elif self.arch == 'arm':
             out += ' ' * (indent *4) + "self.mu.reg_write(UC_ARM_REG_LR, 0x4)\n"
+        elif self.arch == 'arm64':
+            out += ' ' * (indent *4) + "self.mu.reg_write(UC_ARM64_REG_LR, 0x4)\n"
         else:
             print ("Unsupported Arch")
         return out
@@ -365,6 +406,9 @@ class genwrapper(object):
         elif self.arch == 'arm':
             out += ' ' * (indent * 4) + "self._start_unicorn(retAddr)\n"
             pass
+        elif self.arch == 'arm64':
+            out += ' ' * (indent * 4) + "self._start_unicorn(retAddr)\n"
+            pass
         else:
             print ("Unsupported Arch")
 
@@ -377,6 +421,8 @@ class genwrapper(object):
             retAddr = ' ' * (indent * 4) + "retAddr = struct.unpack(\"<i\", self.mu.mem_read(self.mu.reg_read(UC_X86_REG_ESP), 4))[0]\n"
         elif self.arch == 'arm':
             retAddr = ' ' * (indent * 4) + "retAddr = self.mu.reg_read(UC_ARM_REG_LR)\n"
+        elif self.arch == 'arm64':
+            retAddr = ' ' * (indent * 4) + "retAddr = self.mu.reg_read(UC_ARM64_REG_LR)\n"
 
         else:
             print ("Unsupported Architecture")
@@ -408,16 +454,16 @@ class genwrapper(object):
         out += ' ' * ((indent + 1) * 4) + "return\n"
         
         # Check if this crash is the result of an imported Call and execute the hook if applicable
-        if (self.impCallTargets):
-            out += self.generate_hook_lookup(indent=indent)
+        #if (self.impCallTargets):
+        #    out += self.generate_hook_lookup(indent=indent)
 
         # Raise original exception if PC is not equal to the appropriate marker value or imported call marker
-        out += ' ' * (indent * 4) + "else:\n"
+        #out += ' ' * (indent * 4) + "else:\n"
         if self.callConv is not None:
-            out += self.callConv.dumpContext(indent+1)
-        out += ' ' * ((indent + 1) * 4) + "raise e"
+            out += self.callConv.dumpContext(indent)
+        out += ' ' * (indent * 4) + "raise e"
 
-        return out + "\n"
+        return out + "\n\n"
 
     def generate_return_conv(self, indent=1):
         '''
@@ -431,6 +477,8 @@ class genwrapper(object):
             return ' ' * (indent * 4) + "return self.mu.reg_read(UC_X86_REG_EAX)\n"
         elif self.arch == 'arm':
             return ' ' * (indent * 4) + "return self.mu.reg_read(UC_ARM_REG_R0)\n"
+        elif self.arch == 'arm64':
+            return ' ' * (indent * 4) + "return self.mu.reg_read(UC_ARM64_REG_X0)\n"
         else:
             print ('[ripr] Unsupported Arch')
 
@@ -441,7 +489,7 @@ class genwrapper(object):
             decl += ", arg_%x" % i
         decl += '):\n'
         
-        return decl
+        return decl+"\n"
                 
     def generate_fill_in_args(self, indent=1):
         decl = ''
@@ -451,11 +499,15 @@ class genwrapper(object):
             cc = x64callConv("linux", "x64")
             for i in range(0, len(args)):
                 decl += cc.gen_arg_number(args[i], indent)
-        if self.arch == 'x86':
+        elif self.arch == 'x86':
             cc = x86callConv("linux", "x86")
             for i in range(0, len(args)):
                 decl +=  cc.gen_arg_number(args[i], indent)
-        if self.arch == 'arm':
+        elif self.arch == 'arm':
+            cc =armcallConv("linux", "arm")
+            for i in range(0, len(args)):
+                decl += cc.gen_arg_number(args[i], indent)
+        elif self.arch == 'arm64':
             cc =armcallConv("linux", "arm")
             for i in range(0, len(args)):
                 decl += cc.gen_arg_number(args[i], indent)
@@ -485,7 +537,7 @@ class genwrapper(object):
         if (self.conPass['ret'] == True):
             out += self.generate_return_conv(indent=2)
 
-        return out
+        return out+"\n"
 
     def imp_consts(self):
         '''
@@ -512,7 +564,7 @@ class genwrapper(object):
         '''
         out = ' ' * (indent * 4) + """def hook_%s(self):
         print ("[!] %s hook not implemented!")
-        pass\n""" % (name, name)
+        pass\n\n""" % (name, name)
         return out
         
     def _build_impCall_hook_dict(self, indent=1):
@@ -523,14 +575,15 @@ class genwrapper(object):
         
         ret = ''
         out = {}
+        instlen = {}
         build_funcs = []
         # Get a list of names for hook functions
         for impCall in self.impCallTargets:
             if str(impCall.symbol) not in build_funcs:
                 build_funcs.append(str(impCall.symbol))
             
-            out[impCall.address + impCall.inst_len] = "hook_%s" % str(impCall.symbol)
-
+            out[impCall.address] = "['hook_%s',%d]" % (str(impCall.symbol),impCall.inst_len)
+            
         # Generate stubs for the hooked functions
         for func in build_funcs:
             ret += self.generate_default_hookFunc(func)
@@ -538,7 +591,11 @@ class genwrapper(object):
         return (ret, out)
 
     def generate_hookdict(self, hookd, indent=1):
-        return ' ' * (indent * 4) + "self.hookdict = %s\n" % hookd
+        hookstr="self.hookdict = {"
+        for hook in hookd:
+            hookstr+="0x%x: %s," % (hook,hookd[hook])
+        hookstr=hookstr[:-1]+"}\n"
+        return ' ' * (indent * 4) + hookstr
 
     def generate_unset_var_comments(self):
         out = '# Variables listed below should be filled in: \n'
@@ -564,13 +621,14 @@ class genwrapper(object):
             name=self.name.decode('utf-8')
         defn = "class %s(object):\n" % name
         imp = "from unicorn import *\n" + self.imp_consts() + "import struct\nimport binascii\n"
+        
         init = ' ' * 4 + "def __init__(self):\n"
         run = ' ' * 4 + "def run(self):\n"
         
         # Dyanmic Strings
         emuinit = self.generate_emuinit(indent = 2)
-        codevars = self.generate_code_vars(indent = 2) + "\n"
-        datavars = self.generate_data_vars(indent = 2) + "\n"
+        codevars = self.generate_code_vars(indent = 2)
+        datavars = self.generate_data_vars(indent = 2)
 
         # Generate run function 
         runfns = self.generate_run_functions(indent=2) 
@@ -584,9 +642,13 @@ class genwrapper(object):
             hooks = ''
             hookdict = ''
         
+        hookdict=hookdict
+        hooker=' ' * 8 + "self.mu.hook_add(UC_HOOK_CODE, self.hook_code)\n"
+        hookcode = ' ' * 4 + "def hook_code(self, mu, address, size, user_data):\n        if address in self.hookdict.keys():\n            caller=self.hookdict[address][0]\n            getattr(self,caller)()\n            mu.reg_write(UC_ARM_REG_PC,address+self.hookdict[address][1])\n\n"
+
         # mmaps and writes must be generated at the end
-        mmaps = self.generate_mmap(indent = 2) + "\n"
-        writes = self.generate_mem_writes(indent = 2) + "\n"
+        mmaps = self.generate_mmap(indent = 2)
+        writes = self.generate_mem_writes(indent = 2)
 
         start_unicorn = self.generate_start_unicorn_func()
         
@@ -597,6 +659,6 @@ class genwrapper(object):
         
         # Put the pieces together
         self.final = comments + imp + defn + init + emuinit + codevars + datavars + mmaps + writes \
-                     + hookdict + hooks + start_unicorn + runfns + "\n" + ("x = %s()" % name) \
+                     + hooker + hookdict + "\n" + hooks + hookcode + start_unicorn + runfns + "\n" + ("x = %s()" % name) \
                      +"\n"+"print (x.run("+argf+"))\n"
 

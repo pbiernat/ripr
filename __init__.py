@@ -1,6 +1,10 @@
 import sys
+
 if (sys.platform == 'win32'):
-    sys.path.append("C:\\Python37\\lib\\site-packages\\PyQt5")
+    if sys.version_info[0] >= 3:
+        sys.path.append("C:\\Python37\\lib\\site-packages\\PyQt5")
+    else:
+        sys.path.append("C:\\Python27\\lib\\site-packages\\PyQt5")
 try:
     from binaryninja import *
    

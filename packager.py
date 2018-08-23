@@ -5,7 +5,7 @@ from .conScan import convenienceScanner
 
 ### Global for listing all chunks of code for which we have tried to create a python wrapper.
 emuchunks = {}
-
+    
 # List of basic block chunks to package for BB mode
 bbChunks = []
 class Packager(object):
@@ -242,6 +242,7 @@ class Packager(object):
         for ref in dataRefs: 
             sections = [self.engine.find_section(ref.address)]
             secs += sections
+
         for sec_start, sec_end, sec_name in secs:
             self.codeobj.add_data(self.engine.read_bytes(sec_start, sec_end - sec_start), sec_start)
             self.codeobj.add_mmap(sec_start)
@@ -257,10 +258,10 @@ class Packager(object):
             This function handles finding data that needs to get mapped.
         '''
         if (self.dataStrategy == None):
-            if (self.ui.yes_no_box("Use Page-Marking Mode for data dependencies (default; yes)")):
-                self.dataStrategy = "page"
-            else:
+            if (self.ui.yes_no_box("Use Section-Marking Mode for data dependencies (default; yes)")):
                 self.dataStrategy = "section"
+            else:
+                self.dataStrategy = "page"
         
         if (self.dataStrategy == "section"):
             self.map_dependent_sections(dataRefs)
