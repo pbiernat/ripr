@@ -239,9 +239,11 @@ class Packager(object):
         print ("Mapping Sections")
         pagesize = self.engine.get_page_size()
         secs = []
-        for ref in dataRefs: 
-            sections = [self.engine.find_section(ref.address)]
-            secs += sections
+        
+        for ref in dataRefs:
+            section=self.engine.find_section(ref.address)
+            if section!=-1:
+                secs += [section]
 
         for sec_start, sec_end, sec_name in secs:
             self.codeobj.add_data(self.engine.read_bytes(sec_start, sec_end - sec_start), sec_start)
