@@ -209,6 +209,11 @@ class bn_engine(aengine):
         else:
             print ("[ripr] No arguments supplied to get_function_bytes")
             return None
+        
+        if self.bv.get_function_at(address)==None:
+            print ("[ripr] Couldn't get function binary view. Maybe code arch is thumb2?")
+            return None
+            
         # Sort the basic blocks in ascending order 
         bblist = sorted(fobj.basic_blocks, key=lambda x: x.start)
         map(lambda bb: bb.set_user_highlight(HighlightStandardColor.BlackHighlightColor), bblist)
@@ -300,6 +305,9 @@ class bn_engine(aengine):
 
     def branches_from_func(self, address, callCallback, branchCallback):
         fobj = self.bv.get_function_at(address)
+        if (fobj==None):
+            return
+            
         for block in fobj.low_level_il:
             self.branches_from_block(block, callCallback, branchCallback)
 
@@ -319,6 +327,8 @@ class bn_engine(aengine):
 
     def function_contains_addr(self, func_addr, testAddr):
         fobj = self.bv.get_function_at(func_addr)
+        if (fobj==None):
+            return False
         return (fobj.get_basic_block_at(testAddr) != None)
 
     def scan_potential_pointers_bb(self, il_block, fobj):

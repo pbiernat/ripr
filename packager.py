@@ -63,14 +63,17 @@ class Packager(object):
             address = self.address
         # Get the code to be emulated
         localCode = self.engine.get_function_bytes(address=address)
-
+        if (localCode == None):
+            self.ui.msgBox("[ripr] Couldn't get function binary view. Maybe code arch is thumb2?")
+            return False
         # Add each contiguous chunk of code to codeobj and make sure
         # it will be mapped.
         for startAddr in list(localCode.keys()):
             self.codeobj.add_mmap(startAddr)
         
         self.targetCode.append(localCode)
-
+        return True
+        
     def minimal_package_region(self):
         targetCode = self.engine.get_region_bytes(address=self.address)
         self.codeobj.add_data(targetCode[0], targetCode[1])
@@ -94,7 +97,8 @@ class Packager(object):
         if not self.codeobj.name:
             return 
         # Get the bare minimum required information.
-        self.minimal_package_function()
+        if (self.minimal_package_function()==False):
+            return
 
         # Try to find dependencies of our code.
         self.resolve_dependencies()
@@ -274,7 +278,8 @@ class Packager(object):
         for ref in coderefs:
             print ("Found CodeRef: %x::%s" % (ref.address, ref.type))
             if (ref.type == 'call'):
-                self.minimal_package_function(address=ref.address)
+                if (self.minimal_package_function(address=ref.address)==False):
+                    continue
                 self.resolve_dependencies(address=ref.address, isFunc=True)
 
     def resolve_dependencies(self, address=None, isFunc=None):
