@@ -35,12 +35,15 @@ class BinjaDockWidget(QtWidgets.QDockWidget):
         super(BinjaDockWidget, self).__init__(*__args)
         self._app = QtWidgets.QApplication.instance()
         self._main_window = [x for x in self._app.allWidgets() if x.__class__ is QtWidgets.QMainWindow][0]
-        self._tool_menu = [x for x in self._main_window.menuWidget().children() if x.__class__ is QtWidgets.QMenu and x.title() == u'&Tools'][0]
         self._main_window.addDockWidget(Qt.RightDockWidgetArea, self)
         self._tabs = QtWidgets.QTabWidget()
         self._tabs.setTabPosition(QtWidgets.QTabWidget.East)
         self.setWidget(self._tabs)
-        self.addToolMenuAction('Toggle plugin dock', self.toggle)
+        try:
+            self._tool_menu = [x for x in self._main_window.menuWidget().children() if x.__class__ is QtWidgets.QMenu and x.title() == u'&Tools'][0]
+            self.addToolMenuAction('Toggle plugin dock', self.toggle)
+        except AttributeError:
+            pass
         self.hide()
 
     def addTabWidget(self, widget, name):
