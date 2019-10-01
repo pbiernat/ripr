@@ -429,7 +429,7 @@ class genwrapper(object):
             retAddr = ' ' * (indent * 4) + "retAddr = 0\n"
             
         chk_hookdict = ' '  * (indent * 4) + "if retAddr in self.hookdict.keys():\n"
-        getattr_call = ' ' * ( (indent+1) * 4) + "getattr(self, self.hookdict[retAddr])()\n"
+        getattr_call = ' ' * ( (indent+1) * 4) + "getattr(self, self.hookdict[retAddr][0])()\n"
 
         restore = self.generate_restore_exec(indent=indent+1)
         return retAddr + chk_hookdict + getattr_call + restore
@@ -437,8 +437,8 @@ class genwrapper(object):
     def generate_return_guard(self, indent=1):
         '''
             Generate code to catch the "crash" that will happen after a packaged function hits a 
-            ''return'' instruction or imported call. We use 0x1 as a marker to say the function has hit a return as 
-            expected.
+            ''return'' instruction or imported call. 
+            We use 0x1 as a marker to say the function has hit a return as expected.
         '''
         out = ''
         if (self.arch == 'x64'):
@@ -454,14 +454,14 @@ class genwrapper(object):
         out += ' ' * ((indent + 1) * 4) + "return\n"
         
         # Check if this crash is the result of an imported Call and execute the hook if applicable
-        #if (self.impCallTargets):
-        #    out += self.generate_hook_lookup(indent=indent)
+        if (self.impCallTargets):
+            out += self.generate_hook_lookup(indent=indent)
 
         # Raise original exception if PC is not equal to the appropriate marker value or imported call marker
-        #out += ' ' * (indent * 4) + "else:\n"
+        out += ' ' * (indent * 4) + "else:\n"
         if self.callConv is not None:
-            out += self.callConv.dumpContext(indent)
-        out += ' ' * (indent * 4) + "raise e"
+            out += self.callConv.dumpContext(indent+1)
+        out += ' ' * ((indent+1) * 4) + "raise e"
 
         return out + "\n\n"
 
@@ -582,7 +582,7 @@ class genwrapper(object):
             if str(impCall.symbol) not in build_funcs:
                 build_funcs.append(str(impCall.symbol))
             
-            out[impCall.address] = "['hook_%s',%d]" % (str(impCall.symbol),impCall.inst_len)
+            out[impCall.address+impCall.inst_len] = "['hook_%s',%d]" % (str(impCall.symbol),impCall.inst_len)
             
         # Generate stubs for the hooked functions
         for func in build_funcs:
@@ -643,8 +643,8 @@ class genwrapper(object):
             hookdict = ''
         
         hookdict=hookdict
-        hooker=' ' * 8 + "self.mu.hook_add(UC_HOOK_CODE, self.hook_code)\n"
-        hookcode = ' ' * 4 + "def hook_code(self, mu, address, size, user_data):\n        if address in self.hookdict.keys():\n            caller=self.hookdict[address][0]\n            getattr(self,caller)()\n            mu.reg_write(UC_ARM_REG_PC,address+self.hookdict[address][1])\n\n"
+        #hooker=' ' * 8 + "self.mu.hook_add(UC_HOOK_CODE, self.hook_code)\n"
+        #hookcode = ' ' * 4 + "def hook_code(self, mu, address, size, user_data):\n        if address in self.hookdict.keys():\n            caller=self.hookdict[address][0]\n            getattr(self,caller)()\n            mu.reg_write(UC_ARM_REG_PC,address+self.hookdict[address][1])\n\n"
 
         # mmaps and writes must be generated at the end
         mmaps = self.generate_mmap(indent = 2)
@@ -659,6 +659,6 @@ class genwrapper(object):
         
         # Put the pieces together
         self.final = comments + imp + defn + init + emuinit + codevars + datavars + mmaps + writes \
-                     + hooker + hookdict + "\n" + hooks + hookcode + start_unicorn + runfns + "\n" + ("x = %s()" % name) \
+                      + hookdict + "\n" + hooks + start_unicorn + runfns + "\n" + ("x = %s()" % name) \
                      +"\n"+"print (x.run("+argf+"))\n"
 
