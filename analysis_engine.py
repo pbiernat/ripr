@@ -263,8 +263,7 @@ class bn_engine(aengine):
                 return self.bv.arch.assemble('mov al, [%s]' % address)[0]
 
     def get_imports(self):
-        return {self.bv.symbols[sym].address : self.bv.symbols[sym].name for sym in self.bv.symbols if self.bv.symbols[sym].type == SymbolType.ImportedFunctionSymbol}
-
+        return {imp.address : imp.name for imp in self.bv.get_symbols_of_type(SymbolType.ImportedFunctionSymbol)}
 
     def get_instruction_length(self, address):
         return self.bv.get_instruction_length(address)
@@ -312,9 +311,8 @@ class bn_engine(aengine):
             self.branches_from_block(block, callCallback, branchCallback)
 
     def get_data_symbols(self):
-        for sym in self.bv.symbols:
-            if self.bv.symbols[sym].type == 'DataSymbol':
-                yield sym.address()
+        for sym in self.bv.get_symbols_of_type(SymbolType.DataSymbol):
+                yield sym.address
 
     def get_strings(self):
         for st in self.bv.strings:
@@ -379,7 +377,7 @@ class bn_engine(aengine):
         '''
         res = []
         for sec in self.bv.get_sections_at(addr):
-            return ((sec.start, sec.start + sec.length, sec.name))
+            return ((sec.start, sec.end, sec.name))
         return -1
 
 
