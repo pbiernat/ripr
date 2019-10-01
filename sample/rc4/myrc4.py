@@ -127,7 +127,7 @@ class KSA(object):
         return self.mu.mem_read(argAddr_1,256)
 
 if len(sys.argv)<3:
-    print "Usage: %s <key> <plaintext>" % (sys.argv[0])
+    print ("Usage: %s <key> <plaintext>" % (sys.argv[0]))
     exit()
 
 key=sys.argv[1]
@@ -137,4 +137,4 @@ plain=sys.argv[2]
 ksa=KSA()
 S=str(ksa.run(key,S))
 prga=PRGA()
-print str(prga.run(S,plain)).encode('hex')
+print (str(prga.run(S,plain)).encode('hex'))

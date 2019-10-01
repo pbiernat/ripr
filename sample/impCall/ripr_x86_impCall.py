@@ -17,17 +17,17 @@ class x86_test(object):
 
         self.hookdict = {134513753L: 'hook_puts', 134513782L: 'hook_malloc', 134513769L: 'hook_puts'}
     def hook_puts(self):
-        print "===========In Puts=========="
+        print ("===========In Puts==========")
         arg = self.mu.reg_read(UC_X86_REG_ESP)
         arg2 = self.mu.mem_read(arg+4, 0x4)
         arg2 = struct.unpack("<i", str(arg2))[0]
         mem = self.mu.mem_read(arg2, 0x200)
-        print "Puts would have Printed: %s" % (mem.split("\x00")[0])
-        print "===========Leaving Puts=========="
+        print ("Puts would have Printed: %s" % (mem.split("\x00")[0]))
+        print ("===========Leaving Puts==========")
 
     def hook_malloc(self):
-        print "===========In Malloc=========="
-        print "===========Leaving Malloc==========="
+        print ("===========In Malloc==========")
+        print ("===========Leaving Malloc===========")
     
     def _start_unicorn(self, startaddr):
         try:
@@ -49,4 +49,4 @@ class x86_test(object):
         return self.mu.reg_read(UC_X86_REG_EAX)
 
 x = x86_test()
-print x.run()
+print (x.run())

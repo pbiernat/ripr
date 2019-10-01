@@ -1,4 +1,13 @@
-from binaryninja import *
+try:
+    from binaryninja import *
+except:
+    print ("[!!] Not running in Binary Ninja")
+try:
+    import r2pipe
+except:
+    print ("[!!] Not running in Radare2")
+
+from .analysis_engine import *
 
 class ilVar(object):
     def __hash__(self):
@@ -33,7 +42,6 @@ class riprArg(object):
         self.type = _type
         self.num = num
         self.pointerDepth = str(self.type).count("*")
-from analysis_engine import *
 
 class convenienceScanner(object):
     def __init__(self, engine):
@@ -41,7 +49,7 @@ class convenienceScanner(object):
 
     def argIdent(self, addr, isFunc):
         if (isinstance(self.engine, radare2_engine)):
-            print "Unsupported!"
+            print ("Unsupported!")
             return None
         fobj = self.engine.bv.get_functions_containing(addr)
         if len(fobj) > 1:
@@ -58,7 +66,7 @@ class convenienceScanner(object):
             
     def uninit_vars(self, bbs):
         for bb in bbs:
-            mlb = self.engine.find_mlil_block_from_addr(bb.keys()[0]) 
+            mlb = self.engine.find_mlil_block_from_addr(list(bb.keys())[0]) 
             if mlb == None:
                 continue
             set_vars = []
@@ -72,6 +80,6 @@ class convenienceScanner(object):
 
             unset_vars = set(unset_vars)
             for uVar in unset_vars:
-                self.engine.highlight_instr(bb.keys()[0], uVar.mil.address, "orange") 
+                self.engine.highlight_instr(list(bb.keys())[0], uVar.mil.address, "orange") 
 
             return unset_vars

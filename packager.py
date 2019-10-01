@@ -1,11 +1,11 @@
-from codegen import *
-import analysis_engine as ae
-import dependency as dep
-import conScan as con
+from .codegen import *
+from .analysis_engine import aengine as ae
+from .dependency import depScanner
+from .conScan import convenienceScanner
 
 ### Global for listing all chunks of code for which we have tried to create a python wrapper.
 emuchunks = {}
-
+    
 # List of basic block chunks to package for BB mode
 bbChunks = []
 class Packager(object):
@@ -26,7 +26,7 @@ class Packager(object):
         
         self.codeobj = genwrapper('', isFunc)
         self.arch = self.engine.get_arch()
-        self.codeobj.arch = self.arch
+        self.codeobj.setArch(self.arch)
 
         self.impCallStrategy = None
         self.dataStrategy = None
@@ -40,7 +40,7 @@ class Packager(object):
             This function is a wrapper for determining which convenience features can 
             be enabled during code generation.
         '''
-        c = con.convenienceScanner(self.engine)
+        c = convenienceScanner(self.engine)
         if (self.isFunc == True and self.codeobj.arch in ['x64', 'x86', 'arm']):
             self.codeobj.conPass['ret'] = True
 
@@ -63,14 +63,17 @@ class Packager(object):
             address = self.address
         # Get the code to be emulated
         localCode = self.engine.get_function_bytes(address=address)
-
+        if (localCode == None):
+            self.ui.msgBox("[ripr] Couldn't get function binary view. Maybe code arch is thumb2?")
+            return False
         # Add each contiguous chunk of code to codeobj and make sure
         # it will be mapped.
-        for startAddr in localCode.keys():
+        for startAddr in list(localCode.keys()):
             self.codeobj.add_mmap(startAddr)
         
         self.targetCode.append(localCode)
-
+        return True
+        
     def minimal_package_region(self):
         targetCode = self.engine.get_region_bytes(address=self.address)
         self.codeobj.add_data(targetCode[0], targetCode[1])
@@ -94,7 +97,8 @@ class Packager(object):
         if not self.codeobj.name:
             return 
         # Get the bare minimum required information.
-        self.minimal_package_function()
+        if (self.minimal_package_function()==False):
+            return
 
         # Try to find dependencies of our code.
         self.resolve_dependencies()
@@ -132,7 +136,7 @@ class Packager(object):
         if not self.codeobj.name:
             return
         # Set starting address to first basic block selected
-        self.codeobj.startaddr = bbChunks[0].keys()[0]
+        self.codeobj.startaddr = list(bbChunks[0].keys())[0]
 
         self.targetCode = bbChunks
 
@@ -154,7 +158,7 @@ class Packager(object):
     def cleanup_basic_blocks(self):
         global bbChunks
         for bb in bbChunks:
-            self.engine.clean_gathered_basic_block(bb.keys()[0])
+            self.engine.clean_gathered_basic_block(list(bb.keys())[0])
         
 
     def package_region(self):
@@ -176,14 +180,14 @@ class Packager(object):
 
     def _nop_impFunc(self, impCalls):
         for impCall in impCalls:
-            print "[ripr] Nopping out Imported Call: 0x%x" % (impCall.address)
+            print ("[ripr] Nopping out Imported Call: 0x%x" % (impCall.address))
             cSlice = self._find_code_unit(impCall.address)
 
             codeLen = len(cSlice.code_bytes)
             nop = self.engine.get_nop_opcode()
             
             if (impCall.inst_len % len(nop) != 0):
-                print "[ripr] Cannot NOP out instruction..."
+                print ("[ripr] Cannot NOP out instruction...")
                 return
 
             # Create string of NOP opcodes and calculate where to place it
@@ -200,15 +204,15 @@ class Packager(object):
         # in the case of others being automatically mapped as dependencies
         
         localCode = self.targetCode[0]
-        print self.targetCode
-        self.codeobj.codelen = sum([len(localCode[x].code_bytes) for x in localCode.keys()])
+        print (self.targetCode)
+        self.codeobj.codelen = sum([len(localCode[x].code_bytes) for x in list(localCode.keys())])
         for found_code in self.targetCode:
             for addr in found_code:
                 self.codeobj.add_code(found_code[addr])
 
 
     def resolve_imported_calls(self, resolv):
-        print "[ripr] Selection includes calls to imported Functions!"
+        print ("[ripr] Selection includes calls to imported Functions!")
         if self.impCallStrategy == None:
             self.impCallStrategy = self.ui.impCallsOptions()
         
@@ -236,12 +240,15 @@ class Packager(object):
         '''
             Map any sections the target code touches.
         '''
-        print "Mapping Sections"
+        print ("Mapping Sections")
         pagesize = self.engine.get_page_size()
         secs = []
-        for ref in dataRefs: 
-            sections = [self.engine.find_section(ref.address)]
-            secs += sections
+        
+        for ref in dataRefs:
+            section=self.engine.find_section(ref.address)
+            if section!=-1:
+                secs += [section]
+
         for sec_start, sec_end, sec_name in secs:
             self.codeobj.add_data(self.engine.read_bytes(sec_start, sec_end - sec_start), sec_start)
             self.codeobj.add_mmap(sec_start)
@@ -269,23 +276,24 @@ class Packager(object):
 
     def resolve_codeRefs(self, coderefs):
         for ref in coderefs:
-            print "Found CodeRef: %x::%s" % (ref.address, ref.type)
+            print ("Found CodeRef: %x::%s" % (ref.address, ref.type))
             if (ref.type == 'call'):
-                self.minimal_package_function(address=ref.address)
+                if (self.minimal_package_function(address=ref.address)==False):
+                    continue
                 self.resolve_dependencies(address=ref.address, isFunc=True)
 
     def resolve_dependencies(self, address=None, isFunc=None):
         '''
             This method is a high-level wrapper for finding data our target code depends on.
         '''
-        resolv = dep.depScanner(self.engine, self.codeobj) 
+        resolv = depScanner(self.engine, self.codeobj) 
         if (address == None):
             address = self.address 
 
         if (isFunc == None):
             isFunc = self.isFunc
 
-        print "Resolving Dependencies for %x" % address
+        print ("Resolving Dependencies for %x" % address)
         if isFunc:
             coderefs = resolv.branchScan(address, self.isFunc)
             datarefs = resolv.dataScan(address)
@@ -293,22 +301,22 @@ class Packager(object):
             datarefs = resolv.dataScan(address)
             coderefs = []
             for bb in bbChunks:
-                coderefs += resolv.branchScan(bb.keys()[0], self.isFunc) 
+                coderefs += resolv.branchScan(list(bb.keys())[0], self.isFunc) 
 
         if (resolv.impCalls != []):
             self.resolve_imported_calls(resolv) 
 
         if (coderefs != []):
             if (self.ui.yes_no_box("Target code may depend on outside code, attempt to map automatically?") == True):
-                print "[ripr] Performing analysis on code dependencies..."
+                print ("[ripr] Performing analysis on code dependencies...")
                 self.resolve_codeRefs(coderefs)
             else:
                 pass
 
         if (resolv.dataRefs != []):
             # Try to map these automatically
-            print "[ripr] Found these potential Data References"
+            print ("[ripr] Found these potential Data References")
             for ref in resolv.dataRefs:
-                print "Data Referenced: 0x%x" % (ref.address)
+                print ("Data Referenced: 0x%x" % (ref.address))
             self.resolve_data_dependencies(resolv.dataRefs)
             pass

@@ -4,8 +4,17 @@
     properly.
 '''
 
-import analysis_engine as ae
-from binaryninja import *
+from .analysis_engine import aengine as ae
+# Try to import stuff.
+try:
+    from binaryninja import *
+except:
+    print ("[!!] Not running in Binary Ninja")
+try:
+    import r2pipe
+except:
+    print ("[!!] Not running in Radare2")
+
 
 class ImportedCall(object):
     '''
@@ -71,7 +80,7 @@ class depScanner(object):
             Function is responsible for mapping calls and jumps
             that are outside the current selection's bounds, if possible.
         '''
-        print "[ripr] Inside branchScan"
+        print ("[ripr] Inside branchScan")
         def callCallback(dest, instr_addr):
             if type(dest) != int:
                 try:
@@ -79,17 +88,17 @@ class depScanner(object):
                 except:
                     return
             if (dest in self.imports):
-                print "[ripr] Found imported Call target..."
+                print ("[ripr] Found imported Call target...")
                 self._mark_imported_call(address, instr_addr, dest)
 
             elif  (self.codeobj.data_saved(dest) == False):
-                print "[ripr] Found LLIL CALL instruction"
+                print ("[ripr] Found LLIL CALL instruction")
                 self._mark_additional_branch(address, instr_addr, dest, "call")
             else:
-                print "[ripr] Target address already mapped"
+                print ("[ripr] Target address already mapped")
 
         def jumpCallback(dest, instr_addr):
-            print "[ripr] JUMP TARGET: %s" % (dest)
+            print ("[ripr] JUMP TARGET: %s" % (dest))
 
         if isFunc:
             self.engine.branches_from_func(address, callCallback, jumpCallback)
@@ -109,7 +118,7 @@ class depScanner(object):
         for stringStart,stringLength in self.engine.get_strings():
             for refAddress  in self.engine.get_refs_to(stringStart): # Ignored the length
                 if (self.engine.function_contains_addr(address, refAddress)):
-                    print "[ripr] Found string reference: 0x%x" % (refAddress)
+                    print ("[ripr] Found string reference: 0x%x" % (refAddress))
                     self._mark_identified_data(address, refAddress)
                     dref = riprDataRef(stringStart, stringLength, 'str')
                     self.dataRefs.append(dref)
@@ -124,7 +133,7 @@ class depScanner(object):
         for symStart in symbols:
             for refAddress in self.engine.get_refs_to(symStart):
                 if self.engine.function_contains_addr(address, refAddress):
-                    print "[ripr] Found Symbol Reference: 0x%x references 0x%x" % (refAddress, symStart)
+                    print ("[ripr] Found Symbol Reference: 0x%x references 0x%x" % (refAddress, symStart))
                     self._mark_identified_data(address, refAddress)
                     dref = riprDataRef(symStart, -1, 'sym')
                     self.dataRefs.append(dref)
@@ -142,7 +151,7 @@ class depScanner(object):
             Function is responsible for finding data the target code
             needs in order to run correctly.
         '''
-        print "[ripr] Inside dataScan"
+        print ("[ripr] Inside dataScan")
         ret = []
         
         # Find the low-hanging fruit
@@ -151,7 +160,7 @@ class depScanner(object):
         # Iterate over all instructions for potential pointers
         for target, instrAddr in self.engine.scan_potential_pointers(address):
             if self.engine.is_plausible_pointer(target):
-                print "Found Potential Pointer: %s instaddr %s" % (hex(target), hex(instrAddr))
+                print ("Found Potential Pointer: %s instaddr %s" % (hex(target), hex(instrAddr)))
                 self._mark_identified_data(address, instrAddr)
                 dref = riprDataRef(target, -1, 'ptr')
                 self.dataRefs.append(dref)

@@ -35,6 +35,7 @@ Installation on Windows typically requires installing PyQt5.
 ---
 
 #### Packaging a Function
+##### Binary Ninja
 From within Binary Ninja, right click anywhere inside of a function and select `[ripr] Package Function`.
 
 <img src="https://puu.sh/thLAo/491ac39e58.PNG" width="600">
@@ -42,6 +43,10 @@ From within Binary Ninja, right click anywhere inside of a function and select `
 After packaging, a table will appear listing all of the "packages" you have created with ripr during this session:
 
 <img src="https://puu.sh/tnz8C/d0f5141f43.PNG" width="600">
+
+##### Radare2
+If you've followed step 3 in the installation instructions, run `.(ripr 0x1234)` (with 0x1234 replaced by the address of the function).
+Otherwise, you can manually invoke ripr with `#!pipe python /absolute/path/to/ripr/r2pipe_run.py 0x1234`.
 
 #### Packaging Specific Basic Blocks
 You can also choose to only package specific basic blocks rather than the entire function.

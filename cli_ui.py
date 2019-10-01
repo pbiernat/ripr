@@ -23,7 +23,7 @@ class cli_ui:
     def impCallsOptions(self):
         options = ["nop", "hook", "cancel"]
 
-        print "Code contains calls to imported functions. How should this be handled?",
+        print ("Code contains calls to imported functions. How should this be handled?")
         while True:
             selection = raw_input("({})?".format(", ".join(options))).strip()
             if selection in options:
