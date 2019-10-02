@@ -1,3 +1,8 @@
+'''
+This file is analogous to packager, but with user-interaction components stripped out. This 
+makes it easier to write automated tests.
+'''
+
 from .codegen import *
 from .analysis_engine import aengine as ae
 from .dependency import depScanner
@@ -8,7 +13,7 @@ emuchunks = {}
     
 # List of basic block chunks to package for BB mode
 bbChunks = []
-class Packager(object):
+class t_Packager(object):
     '''
         Packager does the work of getting a codegen object
         the information it needs for creating a suitable emulation environment.
@@ -19,7 +24,6 @@ class Packager(object):
         self.length = length
         self.engine = engine
         self.ui = ui
-        #self.ui.emuchunks = emuchunks
 
         # List of Contiguous code we're interested in
         self.targetCode = []
@@ -30,6 +34,7 @@ class Packager(object):
 
         self.impCallStrategy = None
         self.dataStrategy = None
+        self.resolve_arguments = None
 
         self.codeobj.startaddr = int(self.address)
         if (self.length != None):
@@ -46,7 +51,7 @@ class Packager(object):
 
         args = None
         if (self.isFunc):
-            if self.ui.yes_no_box("Attempt to automatically fill in function arguments?"):
+            if (self.resolve_arguments == True):
                 args = c.argIdent(self.address, self.isFunc)
                 if args:
                     self.codeobj.conPass['args'] = args
@@ -87,14 +92,13 @@ class Packager(object):
         bbChunks.append(targetCode)
         
 
-    def package_function(self):
+    def package_function(self, cname):
         '''
             This method handles filling in as much relevant information as possible into our current instance of codeobj
             about the function to be emulated. It is a high-level encapsulation of multipe packaging and analysis methods.
         '''
-        self.codeobj.name = self.ui.text_input_box("Enter Class Name")
-        if not self.codeobj.name:
-            return 
+        self.codeobj.name = cname
+
         # Get the bare minimum required information.
         if (self.minimal_package_function()==False):
             return
@@ -114,9 +118,6 @@ class Packager(object):
 
         # Generate what we currently have and show the results
         self.codeobj.generate_class()
-        self.engine.display_info("Generated Code: %s" % self.codeobj.name, self.codeobj.final)
-        if not self.ui.qtAvailable:
-            self.ui.save_file(self.codeobj) 
 
     def package_bb(self):
         '''
@@ -126,14 +127,15 @@ class Packager(object):
         self.minimal_package_bb()
 
 
-    def generate_bb_code(self):
+    def generate_bb_code(self, cname):
         global bbChunks
         if len(bbChunks) == 0:
             self.ui.msgBox("Basic Block package list is empty!")
             return
-        self.codeobj.name = self.ui.text_input_box("Enter Class Name")
+        self.codeobj.name = cname
         if not self.codeobj.name:
             return
+
         # Set starting address to first basic block selected
         self.codeobj.startaddr = list(bbChunks[0].keys())[0]
 
@@ -211,10 +213,6 @@ class Packager(object):
 
 
     def resolve_imported_calls(self, resolv):
-        print ("[ripr] Selection includes calls to imported Functions!")
-        if self.impCallStrategy == None:
-            self.impCallStrategy = self.ui.impCallsOptions()
-        
         if self.impCallStrategy == 'nop':
             self._nop_impFunc(resolv.impCalls)
         elif self.impCallStrategy == 'hook':
@@ -262,12 +260,6 @@ class Packager(object):
         '''
             This function handles finding data that needs to get mapped.
         '''
-        if (self.dataStrategy == None):
-            if (self.ui.yes_no_box("Use Section-Marking Mode for data dependencies (default; yes)")):
-                self.dataStrategy = "section"
-            else:
-                self.dataStrategy = "page"
-        
         if (self.dataStrategy == "section"):
             self.map_dependent_sections(dataRefs)
         else:
@@ -319,3 +311,5 @@ class Packager(object):
                 print ("Data Referenced: 0x%x" % (ref.address))
             self.resolve_data_dependencies(resolv.dataRefs)
             pass
+
+
