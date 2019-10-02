@@ -643,8 +643,6 @@ class genwrapper(object):
             hookdict = ''
         
         hookdict=hookdict
-        #hooker=' ' * 8 + "self.mu.hook_add(UC_HOOK_CODE, self.hook_code)\n"
-        #hookcode = ' ' * 4 + "def hook_code(self, mu, address, size, user_data):\n        if address in self.hookdict.keys():\n            caller=self.hookdict[address][0]\n            getattr(self,caller)()\n            mu.reg_write(UC_ARM_REG_PC,address+self.hookdict[address][1])\n\n"
 
         # mmaps and writes must be generated at the end
         mmaps = self.generate_mmap(indent = 2)
@@ -653,9 +651,10 @@ class genwrapper(object):
         start_unicorn = self.generate_start_unicorn_func()
         
         argf=""
-        for i in range(0,len(self.conPass['args'])):
-            argf+="0,"
-        argf=argf[:-1]
+        if "args" in self.conPass.keys():
+            for i in range(0,len(self.conPass['args'])):
+                argf+="0,"
+            argf=argf[:-1]
         
         # Put the pieces together
         self.final = comments + imp + defn + init + emuinit + codevars + datavars + mmaps + writes \
