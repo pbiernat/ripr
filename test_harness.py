@@ -294,15 +294,13 @@ class t_Packager(object):
             for bb in bbChunks:
                 coderefs += resolv.branchScan(list(bb.keys())[0], self.isFunc) 
 
+        # Always try to resolve these kinds of dependencies in tests 
+
         if (resolv.impCalls != []):
             self.resolve_imported_calls(resolv) 
 
         if (coderefs != []):
-            if (self.ui.yes_no_box("Target code may depend on outside code, attempt to map automatically?") == True):
-                print ("[ripr] Performing analysis on code dependencies...")
-                self.resolve_codeRefs(coderefs)
-            else:
-                pass
+            self.resolve_codeRefs(coderefs)
 
         if (resolv.dataRefs != []):
             # Try to map these automatically
@@ -311,5 +309,3 @@ class t_Packager(object):
                 print ("Data Referenced: 0x%x" % (ref.address))
             self.resolve_data_dependencies(resolv.dataRefs)
             pass
-
-

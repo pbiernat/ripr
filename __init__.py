@@ -9,8 +9,8 @@ try:
     from binaryninja import *
    
     # Do not try to load if this is hit from "headless"/python api
-    if core_product_type == '':
-        raise ImportError
+    #if core_product_type == '':
+    #    raise ImportError
 
     # ripr imports
     from .analysis_engine import *
@@ -49,5 +49,6 @@ try:
     
     PluginCommand.register_for_function("[ripr] Generate Selected BBs", "Package Function within Unicorn", generate_basicBlocks)
 
-except ImportError:
+except ImportError as e:
+    raise e
     pass

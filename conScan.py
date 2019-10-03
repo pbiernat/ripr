@@ -51,9 +51,12 @@ class convenienceScanner(object):
         if (isinstance(self.engine, radare2_engine)):
             print ("Unsupported!")
             return None
+
         fobj = self.engine.bv.get_functions_containing(addr)
         if len(fobj) > 1:
+            print ("[ripr] Cannot get arguments, multiple functions contain address!")
             return None
+
         fobj = fobj[0]
         if (isFunc):
             ret = []

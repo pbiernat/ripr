@@ -159,3 +159,13 @@ def run(self, arg1, arg2):
 * `gui.py` --  A collection of hacks that resembles a user interface
     * Reuses lots of code from the [Binjadock](https://github.com/NOPDev/BinjaDock) project to display results
 
+### Testing
+The current tests will package up some functions across the 3 supported architectures found 
+in the `sample` folder. 
+
+To run the tests:
+
+```
+cd <ripr_directory>
+python -m unittest discover -t ../
+```
