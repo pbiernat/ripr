@@ -263,10 +263,30 @@ class Packager(object):
             This function handles finding data that needs to get mapped.
         '''
         if (self.dataStrategy == None):
-            if (self.ui.yes_no_box("Use Section-Marking Mode for data dependencies (default; yes)")):
-                self.dataStrategy = "section"
+
+            '''
+            Page marking mode usually works better out of the box for small-medium size ARM
+            binaries because the "dispatch code" for imported calls is not packaged
+            as a dependency automatically. 
+            
+            This results in scenarios where unicorn will keep executing and 'fall through'
+            a call to an imported function instead of crash-landing on the 
+            "imported function" hook. 
+
+            Page-Marking mode will often package these stubs up as a side effect; making it a 
+            better default until this case is handled corretly.
+            '''
+            if self.codeobj.arch == 'arm':
+                if (self.ui.yes_no_box("Use Page-Marking Mode for data dependencies (default: yes)")):
+                    self.dataStrategy = "page"
+                else:
+                    self.dataStrategy = "section"
             else:
-                self.dataStrategy = "page"
+
+                if (self.ui.yes_no_box("Use Section-Marking Mode for data dependencies (default: yes)")):
+                    self.dataStrategy = "section"
+                else:
+                    self.dataStrategy = "page"
         
         if (self.dataStrategy == "section"):
             self.map_dependent_sections(dataRefs)
