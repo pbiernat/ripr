@@ -43,11 +43,11 @@ try:
         pkg = Packager(isFunc=False, address=fobj.start, engine=engine, ui=ui)
         pkg.generate_bb_code()
 
-    PluginCommand.register_for_function("[ripr] Package Function", "Package Function within Unicorn", packageFunction)
+    PluginCommand.register_for_function("ripr\Package Function", "Package Function within Unicorn", packageFunction)
     
-    PluginCommand.register_for_address("[ripr] Package BasicBlock", "Package Function within Unicorn", packageBasicBlock)
+    PluginCommand.register_for_address("ripr\Package BasicBlock", "Package Function within Unicorn", packageBasicBlock)
     
-    PluginCommand.register_for_function("[ripr] Generate Selected BBs", "Package Function within Unicorn", generate_basicBlocks)
+    PluginCommand.register_for_function("ripr\Generate Selected BBs", "Package Function within Unicorn", generate_basicBlocks)
 
 except ImportError as e:
     raise e
