@@ -1,8 +1,7 @@
-## ripr
-ripr is a tool that helps you rip out functionality from binary code and use it from python. It accomplishes this by pairing the [Unicorn-Engine](http://www.unicorn-engine.org/) with [Binary Ninja](https://binary.ninja). Currently, `x86`, `x64`, and `arm` are supported and work to a reasonable degree.
+# ripr
+ripr is a tool that helps you rip out functionality from binary code and use it from Python. It accomplishes this by pairing the [Unicorn-Engine](http://www.unicorn-engine.org/) with [Binary Ninja](https://binary.ninja). Currently, `x86`, `x64`, and `arm` are supported and work to a reasonable degree.
 
-### Introduction
----
+# Introduction
 Reimplementing functionality is a common, often time-consuming, and sometimes arduous process that comes up frequently during reverse engineering. A few examples:
 
 * A CTF challenge has a custom encoding/decoding scheme you need to use in your solution script
@@ -11,44 +10,29 @@ Reimplementing functionality is a common, often time-consuming, and sometimes ar
 
 ripr attempts to automatically generate a python class that is functionally identical to a selected piece of code by statically gathering sufficient information and wrapping it all into a "harness" for the unicorn emulator. 
 
-For some concrete examples (that are much easier to grok), check out the `sample` folder!
+For some concrete examples, check out the `sample` folder!
+
+# Installation
+The manual installation process looks like this:
+
+1. Clone this repo to your local machine
+2. Find the location of your plugins directory from Binary Ninja by clicking on `Tools --> Open Plugin Folder...`
+3. Place this repo in that directory, or create a symlink pointing to it.
 
 
+# Usage
 
-### Installation
----
-The basic process is simple and looks like this:
+## Packaging a Function
+From within Binary Ninja, right click anywhere inside of a function and then select: 
 
-1. Clone the repo to your local machine
-2. Place the repo into your Binary Ninja plugins directory, or create a symlink pointing to it.
-3. (Optional) Install PyQt5 - The latest version of ripr does not require this.
+```Plugins --> ripr --> Package Function```
+<p align="center">
+<img src="https://imgur.com/CjElWAM.png">
+</p>
 
-#### Windows
-Installation on Windows typically requires installing PyQt5.
+See the [Options while Packaging](#options-while-packaging) section for details about prompts that may appear during this process.
 
-1. Follow the steps above
-2. (Optional) `pip2.7.exe install python-qt5`
-
-**Note** ripr assumes your python installation is located at `C:\Python27`. If this is not the case, change the location as appropriate inside `gui.py`.
-
-### Usage
----
-
-#### Packaging a Function
-##### Binary Ninja
-From within Binary Ninja, right click anywhere inside of a function and select `[ripr] Package Function`.
-
-<img src="https://puu.sh/thLAo/491ac39e58.PNG" width="600">
-
-After packaging, a table will appear listing all of the "packages" you have created with ripr during this session:
-
-<img src="https://puu.sh/tnz8C/d0f5141f43.PNG" width="600">
-
-##### Radare2
-If you've followed step 3 in the installation instructions, run `.(ripr 0x1234)` (with 0x1234 replaced by the address of the function).
-Otherwise, you can manually invoke ripr with `#!pipe python /absolute/path/to/ripr/r2pipe_run.py 0x1234`.
-
-#### Packaging Specific Basic Blocks
+## Packaging Specific Basic Blocks
 You can also choose to only package specific basic blocks rather than the entire function.
 
 Select any instruction inside the basic block of interest, and from the right click menu, choose `[ripr] Package Basic Block`.
@@ -56,7 +40,7 @@ Repeat this for any other basic blocks you want to gather.
 
 Finally, select `Generate Selected BBs` from the context menu to have ripr generate output for them.
 
-#### Contextual Highlighting
+## Contextual Highlighting
 
 ripr will contextualize code you've selected for packaging within the GUI.
 
@@ -68,22 +52,22 @@ ripr will contextualize code you've selected for packaging within the GUI.
 
 This is meant to give the user visual cues about what ripr has seen and automatically identified, making it easier to see "right off the bat" whether manual modification of the package is necessary.
 
-#### Options while packaging
+## Options while Packaging
 There are a few different prompts which may appear while packaging a function. 
 
-_Code contains calls to Imported Functions. How should this be handled?_
+#### Code contains calls to Imported Functions. How should this be handled?
 
 Choosing "Hook" will allow you to write-in your own functionality that runs in lieu of imported functions. Selecting "Nop out Calls" will replace the call instruction with a series of NOPs.
 
-_Target code may depend on outside code. Attempt to map automatically?_
+#### Target code may depend on outside code. Attempt to map automatically?
 
 Your selected code contains calls to other functions within the binary. Answering yes will automatically map those functions.
 
-_Use Section Marking Mode for data dependencies?_
+#### Use Section Marking Mode for data dependencies?
 
 Answering yes will map all sections of the binary that are touched by the target code. Answering No will use Page-Marking mode, where every page used by the target code is mapped into emulator memory.
 
-#### Using a ripr "package"
+## Using a ripr "package"
 Once a selection of code has been packaged, you will have a python class which encapsulates its functionality. The basic process of using it looks like this:
 
 1. Instantiate the class
@@ -98,7 +82,7 @@ y = x.run()
 
 All Unicorn functionality is exposed via the `mu` attribute and should work as expected. 
 
-#### Implementing "Imported Calls"
+## Implementing "Imported Calls"
 If you choose to hook calls to `imported functions` during the packaging stage, your generated class will contain stub-functions that are called when the imported call would originally have been called.
 
 For example, if your code contained calls to `puts` and `malloc`, the following would be generated in your class:
@@ -119,7 +103,7 @@ def hook_puts(self):
 
 You have full access to all of Unicorn's methods via the `mu` attribute so it is possible to update the emulator context in any way necessary in order to mimic the behavior of a call or perform any actions you'd like instead of the call.
 
-### Function Arguments
+## Function Arguments
 ripr has some support for automatically generating "argument aware" output. When information about a function's parameters is available to Binary Ninja, ripr will generate its `run`
 functions in the form:
 
@@ -149,8 +133,8 @@ def run(self, arg1, arg2):
     return self.mu.reg_read(UC_X86_REG_EAX)
 ```
 
-### Code Structure
----
+# Code Structure
+
 * `packager.py` -- High Level Functionality. Code here drives the process of gathering necessary data
 * `codegen.py`  -- Contains code for actually generating the python output from the gathered data
 * `analysis_engine.py` -- Wraps static analysis engine functionality into a common interface
@@ -159,7 +143,7 @@ def run(self, arg1, arg2):
 * `gui.py` --  A collection of hacks that resembles a user interface
     * Reuses lots of code from the [Binjadock](https://github.com/NOPDev/BinjaDock) project to display results
 
-### Testing
+# Testing
 The current tests will package up some functions across the 3 supported architectures found 
 in the `sample` folder. 
 
